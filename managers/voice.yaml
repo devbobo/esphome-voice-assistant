@@ -87,6 +87,12 @@ script:
   ################################################################################
   - id: start_wake_word
     then:
+      # voice_assist_idle can fire just before VA fully reaches IDLE.
+      - wait_until:
+          condition:
+            not:
+              voice_assistant.is_running:
+          timeout: 2s
       - script.execute: evaluate_wake_word_state
       - if:
           condition:

@@ -152,10 +152,21 @@ script:
           if ((id(va_media_player).state != media_player::MediaPlayerState::MEDIA_PLAYER_STATE_ANNOUNCING) || priority) {
             id(va_media_player)->play_file(sound_file, true, false);
           }
+      # The media pipeline may transition to ANNOUNCING asynchronously.
+      # Wait for playback lifecycle rather than sampling speaker state once.
+      - wait_until:
+          condition:
+            media_player.is_announcing:
+          timeout: 2s
+      - wait_until:
+          condition:
+            not:
+              media_player.is_announcing:
+          timeout: 30s
       - wait_until:
           condition:
             not:
               speaker.is_playing:
                 id: va_speaker
-          timeout: 30s
+          timeout: 5s
       - delay: 300ms
