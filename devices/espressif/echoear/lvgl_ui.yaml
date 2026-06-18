@@ -60,17 +60,3 @@ interval:
             - lvgl.widget.update:
                 id: ui_detail_card
                 hidden: !lambda return !id(dm_detail_mode);
-
-            - lvgl.widget.update:
-                id: ui_ring_outer
-                bg_color: !lambda |-
-                  if (id(led_ring_state) == "listening") {
-                    return lv_color_hex(0x20A6FF);
-                  }
-                  if (id(led_ring_state) == "processing") {
-                    return lv_color_hex(0x47D27B);
-                  }
-                  if (id(led_ring_state) == "muted" || id(led_ring_state) == "error") {
-                    return lv_color_hex(0xDE4A4A);
-                  }
-                  return lv_color_hex(0x343D52);
