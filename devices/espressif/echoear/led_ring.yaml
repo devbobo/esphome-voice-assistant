@@ -1,0 +1,114 @@
+################################################################################
+## Matrix Voice LED Ring Implementation
+##
+## Device-specific LED ring hardware control and animation.
+## Listens to LED events from root led_ring_state_manager.yaml and controls
+## the actual addressable LED hardware (APA102 RGB LEDs).
+##
+## Separation of Concerns:
+##   - led_ring_state_manager.yaml (root): Decides WHEN LED should change (logic layer)
+##   - led_ring.yaml (device): Controls HOW to change LED (hardware layer)
+##
+## This module:
+##   - Subscribes to led_event platform events from root manager
+##   - Translates LED events to hardware commands (colors, animations, brightness)
+##   - Manages LED animation timings and effects
+##   - Provides Home Assistant automation integration
+##
+## LED Ring Hardware:
+##   - 18 RGBW addressable LEDs (APA102 protocol)
+##   - SPI interface (GPIO14=CLK, GPIO13=MOSI, GPIO15=CS)
+##   - 10MHz clock speed
+##   - Supports pulse, strobe, and custom color effects
+################################################################################
+
+## LED Ring Master Control
+packages:
+  led_ring_control: !include ../../includes/led_ring/common.yaml
+
+## LED Event Subscription
+##
+## Listens to LED events fired by the root led_ring_state_manager.yaml.
+## Converts LED state events into hardware control commands.
+##
+on_event:
+  - event.on_event: led_event
+    then:
+      - logger.log:
+          format: "LED Ring: Handling LED event: %s"
+          args: ["event_type.c_str()"]
+
+      # Listening state: Blue pulse
+      - if:
+          condition:
+            lambda: 'return event_type == "${led_event_listening}";'
+          then:
+            - logger.log: "LED Ring: Listening - blue pulse"
+            - light.turn_on:
+                id: led_ring
+                effect: "Pulse"
+                blue: 100%
+                red: 0%
+                green: 0%
+                brightness: 100%
+
+      # Muted state: Solid red
+      - if:
+          condition:
+            lambda: 'return event_type == "${led_event_muted}";'
+          then:
+            - logger.log: "LED Ring: Muted - solid red"
+            - light.turn_on:
+                id: led_ring
+                effect: "none"
+                red: 100%
+                green: 0%
+                blue: 0%
+                brightness: 100%
+
+      # Processing state: Green pulse
+      - if:
+          condition:
+            lambda: 'return event_type == "${led_event_processing}";'
+          then:
+            - logger.log: "LED Ring: Processing - green pulse"
+            - light.turn_on:
+                id: led_ring
+                effect: "Pulse"
+                green: 100%
+                red: 0%
+                blue: 0%
+                brightness: 100%
+
+      # Idle state: LED off
+      - if:
+          condition:
+            lambda: 'return event_type == "${led_event_idle}";'
+          then:
+            - logger.log: "LED Ring: Idle - turning off"
+            - light.turn_off: led_ring
+
+      # Error state: Red strobe
+      - if:
+          condition:
+            lambda: 'return event_type == "${led_event_error}";'
+          then:
+            - logger.log: "LED Ring: Error - red strobe"
+            - light.turn_on:
+                id: led_ring
+                effect: "Strobe"
+                red: 100%
+                green: 0%
+                blue: 0%
+                brightness: 100%
+
+      # Custom color
+      - if:
+          condition:
+            lambda: 'return event_type == "${led_event_custom}";'
+          then:
+            - logger.log: "LED Ring: Custom color event"
+            - light.turn_on:
+                id: led_ring
+                effect: "none"
+                brightness: 100%

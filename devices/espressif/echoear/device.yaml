@@ -20,6 +20,7 @@ packages:
   io_entities: !include io_entities.yaml
   battery: !include battery.yaml
   display: !include display.yaml
+  led_ring: !include led_ring.yaml
   lvgl_ui: !include lvgl_ui.yaml
   touchscreen: !include touchscreen.yaml
   media_player: !include media_player.yaml
