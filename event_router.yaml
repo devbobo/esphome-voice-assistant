@@ -149,15 +149,6 @@ event:
                 "${evt_va_detected}"
               }.count(event_type) > 0;
           then:
-            - if:
-                condition:
-                  - microphone.is_capturing
-                then:
-                  - wait_until:
-                      condition:
-                        - not:
-                            microphone.is_capturing
-                  - delay: 1500ms
             - script.execute:
                 id: audio_state_manager_handle_event
                 event_type: !lambda return event_type;
