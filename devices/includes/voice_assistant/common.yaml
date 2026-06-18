@@ -20,6 +20,9 @@ micro_wake_word:
               microphone.is_capturing
         timeout: 3s
     - delay: 200ms
+    - event.trigger:
+        id: system_event
+        event_type: "${evt_va_detected}"
     - if:
         condition:
           switch.is_on: wake_sound
