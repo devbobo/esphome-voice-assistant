@@ -1,0 +1,13 @@
+## LED Ring Master Control (Shared)
+##
+## Global toggle to enable/disable LED feedback.
+## Reusable across all devices that provide LED ring support.
+##
+
+switch:
+  - platform: template
+    id: led_ring_enabled
+    name: "LED Ring"
+    icon: "mdi:led-on"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
