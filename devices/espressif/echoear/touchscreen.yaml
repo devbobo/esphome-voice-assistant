@@ -20,7 +20,7 @@ display:
     cs_pin: 14
     reset_pin: 4
     rotation: ${rotate_display}
-    update_interval: 1s
+    update_interval: 3s
     dimensions:
       height: ${imageheight}
       width: ${imagewidth}

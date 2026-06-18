@@ -21,6 +21,11 @@ globals:
     restore_value: no
     initial_value: "true"
 
+  - id: dm_boot_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
   - id: dm_assistant_state
     type: std::string
     restore_value: no
@@ -51,10 +56,16 @@ script:
     mode: restart
     then:
       - lambda: |-
-          if (id(dm_show_startup)) {
+          if (id(dm_boot_ms) == 0) {
+            id(dm_boot_ms) = millis();
+          }
+
+          if (id(dm_show_startup) && (millis() - id(dm_boot_ms) < 4000)) {
             id(dm_current_view) = "startup";
             return;
           }
+
+          id(dm_show_startup) = false;
 
           if (id(dm_detail_mode)) {
             id(dm_current_view) = "detail_" + id(dm_assistant_state);
@@ -118,7 +129,6 @@ script:
                 "${evt_api_connected}"
               }.count(event_type) > 0;
           then:
-            - lambda: id(dm_show_startup) = false;
             - lambda: id(dm_assistant_state) = "idle";
 
       - script.execute: display_manager_recompute_view
