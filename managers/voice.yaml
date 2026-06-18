@@ -165,6 +165,9 @@ script:
     then:
       - logger.log: "Voice: Stopping wake word"
       - script.stop: start_wake_word
+      # Ensure I2S mic path is released before any announcement playback.
+      - microphone.stop_capture:
+          id: va_microphone
       - if:
           condition:
             lambda: >-
@@ -180,7 +183,6 @@ script:
                 == "${wake_word_location_device}";
           then:
             - micro_wake_word.stop:
-            # - microphone.stop_capture:
             - delay: 100ms
 
   ################################################################################
