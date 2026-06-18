@@ -1,33 +1,41 @@
 ## EchoEar LVGL UI Module
 ## Owns UI rendering using LVGL widgets while state logic stays in managers.
 
+substitutions:
+  ring_width: "15"  # Pixel width of the status ring; inner dimensions are derived from this.
+
 lvgl:
   displays:
     - main_display
   touchscreens:
     - touch_screen
+
+  # Ring lives on top_layer so it is visible on every page without duplication.
+  top_layer:
+    widgets:
+      - obj:
+          id: ui_ring_outer
+          x: 0
+          y: 0
+          width: ${imageheight}
+          height: ${imageheight}
+          radius: !lambda return ${imageheight} / 2;
+          border_width: 0
+          bg_color: 0x343D52
+      - obj:
+          id: ui_ring_inner
+          x: !lambda return ${ring_width};
+          y: !lambda return ${ring_width};
+          width: !lambda return ${imageheight} - (2 * ${ring_width});
+          height: !lambda return ${imageheight} - (2 * ${ring_width});
+          radius: !lambda return (${imageheight} - (2 * ${ring_width})) / 2;
+          border_width: 0
+          bg_color: 0x06080E
+
   pages:
     - id: main_page
       bg_color: 0x06080E
       widgets:
-        - obj:
-            id: ui_ring_outer
-            x: 0
-            y: 0
-            width: 360
-            height: 360
-            radius: 180
-            border_width: 0
-            bg_color: 0x343D52
-        - obj:
-            id: ui_ring_inner
-            x: 36
-            y: 36
-            width: 288
-            height: 288
-            radius: 144
-            border_width: 0
-            bg_color: 0x06080E
         - obj:
             id: ui_detail_card
             x: 72
