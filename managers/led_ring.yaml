@@ -6,13 +6,13 @@
 ##
 ## Architecture:
 ##   - Subscribes to: system_event via event_router routing
-##   - Filters for: wake_word_detected, mic_muted/unmuted, voice_assist_idle, api_connected
+##   - Filters for: wake_acknowledged, mic_muted/unmuted, voice_assist_idle, api_connected
 ##   - Publishes: LED events via led_event platform
 ##   - Implementation: Device-specific handlers consume led_event
 ##
 ## LED Ring States:
 ##   - idle: Device ready but not listening
-##   - listening: Wake word detected, awaiting voice input
+##   - listening: Wake feedback started or assistant is listening
 ##   - muted: Microphone disabled (solid red)
 ##   - processing: Voice command recognized
 ##   - error: System error or communication issue
@@ -54,12 +54,12 @@ script:
           format: "LED Manager: Received event %s"
           args: ["event_type.c_str()"]
 
-      # Wake word detected - entering listening mode
+      # Wake feedback started - enter listening mode in sync with the beep
       - if:
           condition:
-            lambda: 'return event_type == "${evt_va_detected}";'
+            lambda: 'return event_type == "${evt_wake_acknowledged}";'
           then:
-            - logger.log: "LED: Wake word detected - entering listening"
+            - logger.log: "LED: Wake acknowledged - entering listening"
             - lambda: id(led_ring_state) = "listening";
             - event.trigger:
                 id: led_event

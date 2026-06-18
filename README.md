@@ -285,12 +285,11 @@ api component                 ──publishes events──→  system_event
 | `api_disconnected` | api component | Disconnected from Home Assistant |
 | `audio_ready` | audio manager | Startup sound flow complete; safe to arm wake word |
 | `announcement_started` | media_player | External HA announcement playback began |
-| `media_player_idle` | media_player | Announcement/sound playback finished |
 | `mic_muted` | va_microphone_switch | Mic switch turned off (capture stopped) |
 | `mic_unmuted` | va_microphone_switch | Mic switch turned on |
 | `wake_word_stop_requested` | any component needing mic free | Signals Voice Manager to stop wake word |
 | `wake_word_location_changed` | wake word location select | Device/HA mode switched |
-| `voice_assist_detected` | micro_wake_word | Wake word detected |
+| `wake_acknowledged` | voice_assistant common package | Wake feedback phase begins; sync point for visual/audio acknowledgement |
 | `voice_assist_listening` | voice_assistant | Microphone listening for speech |
 | `voice_assist_thinking` | voice_assistant | STT processing |
 | `voice_assist_replying` | voice_assistant | TTS started |
@@ -303,21 +302,20 @@ api component                 ──publishes events──→  system_event
 - Decides when to start/stop `micro_wake_word` and `voice_assistant`
 - Gate conditions: mic switch ON + API connected + VA not running
 - Starts `va_microphone_switch` as part of `start_wake_word`
-- Responds to: `audio_ready`, `media_player_idle`, `mic_unmuted`, `va_idle`, `va_detected`, `api_disconnected`, `announcement_started`, `mic_muted`, `wake_word_stop_requested`
+- Responds to: `audio_ready`, `mic_unmuted`, `voice_assist_idle`, `api_disconnected`, `announcement_started`, `mic_muted`, `wake_word_stop_requested`
 
 **`managers/audio.yaml`** — sound playback and audio feedback:
-- Plays wake sound on `va_detected` (if enabled)
 - On `api_connected`: emits `wake_word_stop_requested`, waits for mic idle, plays startup sound, then emits `audio_ready`
 - Never calls `stop_wake_word` directly
 
 **`devices/includes/voice_assistant/common.yaml`** — lifecycle events and controls:
-- `on_wake_word_detected`: emits `wake_word_stop_requested`, waits for mic idle, plays optional beep, calls `voice_assistant.start`
+- `on_wake_word_detected`: emits `wake_word_stop_requested`, waits for mic idle, emits `wake_acknowledged`, optionally plays beep, calls `voice_assistant.start`
 - `on_listening/stt_vad_end/tts_start/end/error`: publish phase events to event bus
 - `va_microphone_switch` switch: `on_turn_off` calls `microphone.stop_capture` then emits `mic_muted`; `on_turn_on` emits `mic_unmuted` only (Voice Manager owns capture re-arm)
 
 **`devices/<vendor>/<model>/media_player.yaml` + includes** — announcement signaling:
 - `on_announcement`: emits `announcement_started` for external HA announcements only (internal sounds from `play_sound` are event-silent to avoid recursion)
-- `on_idle`: emits `media_player_idle` for external announcements only
+- `on_idle`: emits `voice_assist_idle` for external announcements only
 
 ### Boot Startup Flow
 

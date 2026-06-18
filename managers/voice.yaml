@@ -12,7 +12,6 @@
 ##   - Start triggers:
 ##       audio_ready, mic_unmuted, va_idle
 ##   - Direct starts:
-##       va_detected (calls voice_assistant.start with detected wake word)
 ##       wake_word_location_changed (switches device/HA mode)
 ##   - Executes:
 ##       micro_wake_word.start/stop,
@@ -38,11 +37,6 @@ globals:
     restore_value: no
     initial_value: "false"
     # Tracks whether wake word should be running based on all conditions
-  - id: last_detected_wake_word
-    type: std::string
-    restore_value: no
-    initial_value: '""'
-    # Last wake word captured by micro_wake_word.on_wake_word_detected
 
 script:
   ################################################################################
@@ -171,16 +165,6 @@ script:
       - logger.log:
           format: "Voice Manager: Received event %s"
           args: ["event_type.c_str()"]
-
-      - if:
-          condition:
-            lambda: >-
-              return std::set<std::string>{
-                "${evt_va_detected}",
-              }.count(event_type) > 0;
-          then:
-            - voice_assistant.start:
-                wake_word: !lambda return id(last_detected_wake_word);
 
       # Voice assistant finished - handle audio waiting and wake word restart based on mode
       - if:

@@ -25,7 +25,7 @@
 ##   - mic_unmuted:              Microphone switch toggled on
 ##   - audio_ready:              Startup sound flow completed; safe to re-arm wake word
 ##   - voice_assist_idle:        Voice assistant session ended (on_end fired)
-##   - voice_assist_detected:    Wake word detected by micro_wake_word
+##   - wake_acknowledged:        Wake feedback is starting (beep/ring sync point)
 ##   - voice_assist_listening:   Voice assistant is listening for speech
 ##   - voice_assist_thinking:    Speech detected, processing STT
 ##   - voice_assist_replying:    TTS started (HA generating reply)
@@ -60,7 +60,7 @@ substitutions:
   evt_mic_unmuted:                "mic_unmuted"
   evt_audio_ready:                "audio_ready"
   evt_va_idle:                    "voice_assist_idle"
-  evt_va_detected:                "voice_assist_detected"
+  evt_wake_acknowledged:          "wake_acknowledged"
   evt_va_listening:               "voice_assist_listening"
   evt_va_thinking:                "voice_assist_thinking"
   evt_va_replying:                "voice_assist_replying"
@@ -98,7 +98,7 @@ event:
       - ${evt_mic_unmuted}
       - ${evt_audio_ready}
       - ${evt_va_idle}
-      - ${evt_va_detected}
+      - ${evt_wake_acknowledged}
       - ${evt_va_listening}
       - ${evt_va_thinking}
       - ${evt_va_replying}
@@ -148,7 +148,7 @@ event:
                 "${evt_mic_muted}",
                 "${evt_mic_unmuted}",
                 "${evt_va_idle}",
-                "${evt_va_detected}",
+                "${evt_wake_acknowledged}",
                 "${evt_va_listening}",
                 "${evt_va_thinking}",
                 "${evt_va_error}"
@@ -169,7 +169,7 @@ event:
                 "${evt_audio_ready}",
                 "${evt_mic_muted}",
                 "${evt_mic_unmuted}",
-                "${evt_va_detected}",
+                "${evt_wake_acknowledged}",
                 "${evt_va_idle}",
                 "${evt_va_listening}",
                 "${evt_va_thinking}",

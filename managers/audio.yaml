@@ -8,7 +8,6 @@
 ## Architecture:
 ##   - Subscribes to: system_event via event_router routing
 ##   - Filters for:
-##       voice_assist_detected: play wake-word sound if enabled
 ##       api_connected: stop wake word (via event), play startup sound
 ##   - Publishes:
 ##       wake_word_stop_requested: before playing startup sound
@@ -62,24 +61,6 @@ script:
       - logger.log:
           format: "Audio Manager: Received event %s"
           args: ["event_type.c_str()"]
-
-      # Wake word detected - play sound if enabled
-      - if:
-          condition:
-            lambda: 'return event_type == "${evt_va_detected}";'
-          then:
-            - logger.log: "Audio: Voice Assistant detected"
-            - if:
-                condition:
-                  switch.is_on: wake_sound
-                then:
-                  - logger.log: "Audio: Playing wake word sound"
-                  - script.execute:
-                      id: play_sound
-                      priority: true
-                      sound_file: !lambda return id(wake_word_triggered_sound);
-                  - script.wait: play_sound
-                  - delay: 300ms
 
       # API connected
       - if:

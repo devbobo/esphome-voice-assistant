@@ -100,7 +100,7 @@ script:
           condition:
             lambda: >-
               return std::set<std::string>{
-                "${evt_va_detected}",
+                "${evt_wake_acknowledged}",
                 "${evt_va_listening}"
               }.count(event_type) > 0;
           then:
