@@ -1,0 +1,3 @@
+- logger.log:
+    format: "Device Led Event: %s"
+    args: ["event_type.c_str()"]
