@@ -11,6 +11,12 @@ micro_wake_word:
     - hey_jarvis
     - alexa
   on_wake_word_detected:
+    - logger.log:
+        format: "MWW: detected wake_word=%s va_running=%d ann=%d"
+        args:
+          - "wake_word.c_str()"
+          - "id(va).is_running() ? 1 : 0"
+          - "(id(va_media_player).state == media_player::MediaPlayerState::MEDIA_PLAYER_STATE_ANNOUNCING) ? 1 : 0"
     - event.trigger:
         id: system_event
         event_type: "${evt_wake_word_stop_requested}"
@@ -24,11 +30,18 @@ micro_wake_word:
         condition:
           switch.is_on: wake_sound
         then:
+          - logger.log: "MWW: wake sound enabled, executing play_sound"
           - script.execute:
               id: play_sound
               priority: true
               sound_file: !lambda return id(wake_word_triggered_sound);
           - script.wait: play_sound
+          - logger.log: "MWW: wake sound completed"
+    - logger.log:
+        format: "MWW: starting VA va_running=%d ann=%d"
+        args:
+          - "id(va).is_running() ? 1 : 0"
+          - "(id(va_media_player).state == media_player::MediaPlayerState::MEDIA_PLAYER_STATE_ANNOUNCING) ? 1 : 0"
     - voice_assistant.start:
         wake_word: !lambda return wake_word;
 

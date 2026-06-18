@@ -87,17 +87,33 @@ script:
   ################################################################################
   - id: start_wake_word
     then:
+      - logger.log:
+          format: "Voice: start_wake_word enter mic=%d va_running=%d api=%d mode=%s"
+          args:
+            - "id(va_microphone_switch).state ? 1 : 0"
+            - "id(va).is_running() ? 1 : 0"
+            - "id(api_client_connected) ? 1 : 0"
+            - "id(wake_word_engine_location).current_option().c_str()"
       # voice_assist_idle can fire just before VA fully reaches IDLE.
       - wait_until:
           condition:
             not:
               voice_assistant.is_running:
           timeout: 2s
+      - logger.log:
+          format: "Voice: start_wake_word post-va-wait va_running=%d"
+          args:
+            - "id(va).is_running() ? 1 : 0"
       - script.execute: evaluate_wake_word_state
+      - logger.log:
+          format: "Voice: start_wake_word gate_result should_run=%d"
+          args:
+            - "id(wake_word_should_be_active) ? 1 : 0"
       - if:
           condition:
             lambda: return id(wake_word_should_be_active);
           then:
+            - logger.log: "Voice: gate passed, waiting for output idle"
             # Ensure speaker/announcement playback is idle before arming wake word.
             - wait_until:
                 condition:
@@ -107,6 +123,11 @@ script:
                       - not:
                           speaker.is_playing:
                             id: va_speaker
+            - logger.log:
+                format: "Voice: output idle reached ann=%d spk=%d"
+                args:
+                  - "(id(va_media_player).state == media_player::MediaPlayerState::MEDIA_PLAYER_STATE_ANNOUNCING) ? 1 : 0"
+                  - "id(va_speaker).is_playing() ? 1 : 0"
             - switch.turn_on: va_microphone_switch
             - if:
                 condition:
@@ -127,6 +148,13 @@ script:
                   - logger.log: "Voice: Starting HA wake word"
                   - lambda: id(va).set_use_wake_word(true);
                   - voice_assistant.start_continuous:
+          else:
+            - logger.log:
+                format: "Voice: gate blocked mic=%d va_running=%d api=%d"
+                args:
+                  - "id(va_microphone_switch).state ? 1 : 0"
+                  - "id(va).is_running() ? 1 : 0"
+                  - "id(api_client_connected) ? 1 : 0"
 
   ################################################################################
   ## Stop Wake Word
@@ -185,11 +213,21 @@ script:
           condition:
             lambda: 'return event_type == "${evt_va_idle}";'
           then:
+            - logger.log:
+                format: "Voice: va_idle prewait va_running=%d ann=%d"
+                args:
+                  - "id(va).is_running() ? 1 : 0"
+                  - "(id(va_media_player).state == media_player::MediaPlayerState::MEDIA_PLAYER_STATE_ANNOUNCING) ? 1 : 0"
             # Wait for announcement to start (with timeout in case no TTS response)
             - wait_until:
                 condition:
                   media_player.is_announcing:
                 timeout: 0.5s
+            - logger.log:
+                format: "Voice: va_idle postwait va_running=%d ann=%d"
+                args:
+                  - "id(va).is_running() ? 1 : 0"
+                  - "(id(va_media_player).state == media_player::MediaPlayerState::MEDIA_PLAYER_STATE_ANNOUNCING) ? 1 : 0"
             - logger.log: "Voice: Session ended, re-evaluating wake word"
             - script.execute: start_wake_word
       
@@ -213,6 +251,12 @@ script:
                             speaker.is_playing
                   - delay: 1500ms
             - logger.log: "Voice: Starting wake word"
+            - logger.log:
+                format: "Voice: start trigger states va_running=%d ann=%d spk=%d"
+                args:
+                  - "id(va).is_running() ? 1 : 0"
+                  - "(id(va_media_player).state == media_player::MediaPlayerState::MEDIA_PLAYER_STATE_ANNOUNCING) ? 1 : 0"
+                  - "id(va_speaker).is_playing() ? 1 : 0"
             - script.execute: start_wake_word
 
       # Voice assistant listening / mic muted / api disconnected - stop wake word

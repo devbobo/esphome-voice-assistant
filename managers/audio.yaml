@@ -141,6 +141,11 @@ script:
       priority: bool
       sound_file: "audio::AudioFile*"
     then:
+      - logger.log:
+          format: "Audio: play_sound begin priority=%d media_state=%d"
+          args:
+            - "priority ? 1 : 0"
+            - "(int) id(va_media_player).state"
       - lambda: |-
           if (priority) {
             id(va_media_player)
@@ -158,15 +163,27 @@ script:
           condition:
             media_player.is_announcing:
           timeout: 2s
+      - logger.log:
+          format: "Audio: play_sound after ann wait ann=%d"
+          args:
+            - "(id(va_media_player).state == media_player::MediaPlayerState::MEDIA_PLAYER_STATE_ANNOUNCING) ? 1 : 0"
       - wait_until:
           condition:
             not:
               media_player.is_announcing:
           timeout: 30s
+      - logger.log:
+          format: "Audio: play_sound after ann clear ann=%d"
+          args:
+            - "(id(va_media_player).state == media_player::MediaPlayerState::MEDIA_PLAYER_STATE_ANNOUNCING) ? 1 : 0"
       - wait_until:
           condition:
             not:
               speaker.is_playing:
                 id: va_speaker
           timeout: 5s
+      - logger.log:
+          format: "Audio: play_sound speaker idle=%d"
+          args:
+            - "id(va_speaker).is_playing() ? 0 : 1"
       - delay: 300ms
