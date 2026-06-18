@@ -20,7 +20,7 @@ display:
     cs_pin: 14
     reset_pin: 4
     rotation: ${rotate_display}
-    update_interval: 3s
+    update_interval: never
     dimensions:
       height: ${imageheight}
       width: ${imagewidth}
@@ -95,6 +95,16 @@ display:
       if (id(dm_assistant_state) == "error") {
         it.filled_rectangle(0, 334, width, 26, Color(166, 39, 39));
       }
+
+interval:
+  - interval: 150ms
+    then:
+      - if:
+          condition:
+            lambda: 'return id(dm_render_requested);'
+          then:
+            - lambda: id(dm_render_requested) = false;
+            - component.update: main_display
 
 # CST816 Touchscreen Driver
 touchscreen:

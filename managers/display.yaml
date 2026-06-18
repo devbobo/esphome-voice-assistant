@@ -16,6 +16,11 @@ globals:
     restore_value: no
     initial_value: '"startup"'
 
+  - id: dm_render_requested
+    type: bool
+    restore_value: no
+    initial_value: "true"
+
   - id: dm_show_startup
     type: bool
     restore_value: no
@@ -95,6 +100,7 @@ script:
           condition:
             lambda: >-
               return std::set<std::string>{
+                "${evt_va_detected}",
                 "${evt_va_listening}"
               }.count(event_type) > 0;
           then:
@@ -175,6 +181,7 @@ script:
   - id: display_manager_render
     mode: restart
     then:
+      - lambda: id(dm_render_requested) = true;
       - logger.log:
           format: "Display Manager: view=%s state=%s page=%d detail=%s system=%s touch=%s"
           args:
@@ -184,3 +191,18 @@ script:
             - 'id(dm_detail_mode) ? "on" : "off"'
             - "id(dm_last_system_event).c_str()"
             - "id(dm_last_touch_event).c_str()"
+
+interval:
+  - interval: 250ms
+    then:
+      - if:
+          condition:
+            lambda: >-
+              if (id(dm_boot_ms) == 0) {
+                id(dm_boot_ms) = millis();
+              }
+              return id(dm_show_startup) && (millis() - id(dm_boot_ms) >= 4000);
+          then:
+            - lambda: id(dm_show_startup) = false;
+            - script.execute: display_manager_recompute_view
+            - script.execute: display_manager_render

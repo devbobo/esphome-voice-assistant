@@ -179,6 +179,7 @@ event:
                 "${evt_announcement_started}",
                 "${evt_media_player_idle}",
                 "${evt_audio_ready}",
+                "${evt_va_detected}",
                 "${evt_va_idle}",
                 "${evt_va_listening}",
                 "${evt_va_thinking}",
