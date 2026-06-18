@@ -146,6 +146,7 @@ event:
             lambda: >-
               return std::set<std::string>{
                 "${evt_api_connected}",
+                "${evt_api_disconnected}",
                 "${evt_va_detected}"
               }.count(event_type) > 0;
           then:
@@ -169,7 +170,7 @@ event:
                 event_type: !lambda return event_type;
 
 packages:
-  audio_manager: !include manager/audio.yaml
-  voice_manager: !include manager/voice.yaml
-  led_ring_manager: !include manager/led_ring.yaml
-  touchscreen_manager: !include manager/touchscreen.yaml
+  audio_manager: !include managers/audio.yaml
+  voice_manager: !include managers/voice.yaml
+  led_ring_manager: !include managers/led_ring.yaml
+  touchscreen_manager: !include managers/touchscreen.yaml
