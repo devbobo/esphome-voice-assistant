@@ -188,7 +188,6 @@ event:
               return std::set<std::string>{
                 "${evt_api_connected}",
                 "${evt_api_disconnected}",
-                "${evt_va_detected}"
               }.count(event_type) > 0;
           then:
             - script.execute:
@@ -202,7 +201,6 @@ event:
                 "${evt_mic_unmuted}",
                 "${evt_audio_ready}",
                 "${evt_va_idle}",
-                "${evt_va_detected}",
               }.count(event_type) > 0;
           then:
             - script.execute:
