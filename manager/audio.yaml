@@ -113,3 +113,27 @@ script:
       - logger.log:
           format: "Audio Manager: Handled event %s"
           args: ["event_type.c_str()"]
+
+  - id: play_sound
+    parameters:
+      priority: bool
+      sound_file: "audio::AudioFile*"
+    then:
+      - lambda: |-
+          if (priority) {
+            id(va_media_player)
+              ->make_call()
+              .set_command(media_player::MediaPlayerCommand::MEDIA_PLAYER_COMMAND_STOP)
+              .set_announcement(true)
+              .perform();
+          }
+          if ((id(va_media_player).state != media_player::MediaPlayerState::MEDIA_PLAYER_STATE_ANNOUNCING) || priority) {
+            id(va_media_player)->play_file(sound_file, true, false);
+          }
+      - wait_until:
+          condition:
+            not:
+              speaker.is_playing:
+                id: va_speaker
+          timeout: 30s
+      - delay: 300ms

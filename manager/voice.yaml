@@ -17,11 +17,11 @@
 ##   - Executes:
 ##       micro_wake_word.start/stop,
 ##       voice_assistant.start/stop/start_continuous,
-##       switch.turn_on: va_microphone (owned by start_wake_word)
+##       switch.turn_on: va_microphone_switch (owned by start_wake_word)
 ##   - Owns: All wake word state and start/stop conditions
 ##
 ## Gate Conditions (evaluate_wake_word_state):
-##   1. va_microphone switch must be ON
+##   1. va_microphone_switch must be ON
 ##   2. Voice assistant must not be running
 ##   3. API client must be connected
 ##
@@ -29,7 +29,7 @@
 ##   - Voice State Manager: sole executor of wake word start/stop.
 ##   - Audio State Manager: manages sound playback only.
 ##   - Event Router: routes events; never executes wake word actions.
-##   - voice_assistant.yaml: publishes lifecycle events only.
+##   - devices/includes/voice_assistant/common.yaml: publishes lifecycle events.
 ################################################################################
 
 globals:
@@ -49,7 +49,7 @@ script:
   ## Evaluate Wake Word State
   ##
   ## Determines whether the wake word should be active based on:
-  ##   1. Microphone enabled (va_microphone switch ON)
+  ##   1. Microphone enabled (va_microphone_switch ON)
   ##   2. No announcement is playing
   ##   3. No voice assistant session is active
   ##   4. Connected to Home Assistant when using HA wake word mode
@@ -63,7 +63,7 @@ script:
           bool should_run = true;
           
           // Check: microphone must be enabled
-          if (!id(va_microphone).state) {
+          if (!id(va_microphone_switch).state) {
             should_run = false;
           }
           
@@ -100,8 +100,8 @@ script:
                           media_player.is_announcing:
                       - not:
                           speaker.is_playing:
-                            id: box_speaker
-            - switch.turn_on: va_microphone
+                            id: va_speaker
+            - switch.turn_on: va_microphone_switch
             - if:
                 condition:
                   lambda: >-

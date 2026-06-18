@@ -1,4 +1,9 @@
-# Resume wake word when speaker finishes (regardless of voice assistant state)
-- script.execute:
-    id: handle_audio_event
-    event_type: "${audio_event_announcement_ended}"
+# Media player finished - broadcast idle event ONLY if it was an external announcement
+# Skip for internal sounds to avoid triggering state managers during startup sound, etc.
+- if:
+        condition:
+            lambda: return id(last_announcement_was_external);
+        then:
+            - event.trigger:
+                    id: system_event
+                    event_type: ${evt_media_player_idle}

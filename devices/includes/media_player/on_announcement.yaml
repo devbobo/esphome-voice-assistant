@@ -1,21 +1,30 @@
-# Stop wake word during announcement, and wait for HA voice session to complete
+# Determine if this announcement is from Home Assistant (external) or internal sound
+# Only publish event for external announcements to avoid recursion
+- lambda: |-
+    // Check if we're in a voice assistant session or if this is an external HA announcement
+    // If voice assistant is running, this is likely from HA response, so it's external
+    if (id(va).is_running()) {
+      id(last_announcement_was_external) = true;
+    } else {
+      // If not in voice session, this is likely from play_sound script (internal)
+      id(last_announcement_was_external) = false;
+    }
+
+# Publish announcement_started ONLY for external announcements from Home Assistant
 - if:
     condition:
-      - microphone.is_capturing:
+      lambda: return id(last_announcement_was_external);
     then:
-      - script.execute:
-          id: handle_audio_event
-          event_type: "${audio_event_announcement_started}"
-      - if:
+      - event.trigger:
+          id: system_event
+          event_type: ${evt_announcement_started}
+
+# If using HA wake word, wait for voice session to complete
+- if:
+    condition:
+      - lambda: return id(wake_word_engine_location).current_option() == "${wake_word_location_ha}";
+    then:
+      - wait_until:
           condition:
-            - lambda: return id(wake_word_engine_location).current_option() == "${wake_word_location_ha}";
-          then:
-            - wait_until:
-                condition:
-                  - not:
-                      voice_assistant.is_running:
-- if:
-    condition:
-      lambda: 'return id(playing_internal_sound);'
-    then:
-      - lambda: 'id(playing_internal_sound) = false;'
+            - not:
+                voice_assistant.is_running:

@@ -1,9 +1,26 @@
+## EchoEar Media Player & Audio Configuration
+## Speaker, media player, announcement pipeline, and startup sound handling
+## Audio file URLs configured in sounds.yaml
+##
+## Publishes:
+##   - announcement_started: external HA announcement playback began
+##                           (playback-state semantic; triggers wake word stop)
+##   - media_player_idle:    announcement or sound finished playback
+##                           (triggers wake word re-arm if external)
+##
+## Note: Internal sounds (play_sound script) do NOT emit events to avoid
+##       event recursion. last_announcement_was_external tracks this.
+
+packages:
+  media_player_common: !include ../../includes/media_player/common.yaml
+
+# Media player configuration
 media_player:
   - platform: speaker
-    name: None
-    id: va_media_player
     volume_min: 0.5
     volume_max: 0.7 # don't go higher than 0.8
+    name: None
+    id: va_media_player
     announcement_pipeline:
       speaker: va_speaker
       format: FLAC

@@ -60,10 +60,13 @@ The configuration uses a **tiered modular architecture** that separates device-s
 
 ### Device Modules (devices/ Folder)
 
-Device-specific modules and shared device functionality:
+Device-specific modules are scoped per device folder:
 
-- **`devices/voice_assistant.yaml`** - Wake word detection (on-device or Home Assistant), voice assistant lifecycle
-- **`devices/media_player.yaml`** - Speaker control, audio playback, announcement pipeline
+- **`devices/<vendor>/<model>/device.yaml`** - Device orchestrator
+- **`devices/<vendor>/<model>/media_player.yaml`** - Device media player wiring
+- **`devices/<vendor>/<model>/voice_assistant.yaml`** - Device voice assistant wiring
+- **`devices/includes/media_player/common.yaml`** - Shared media player globals/switches
+- **`devices/includes/voice_assistant/common.yaml`** - Shared voice assistant behavior
 
 ### YAML Includes (Partial Fragments - devices/includes/)
 
@@ -106,20 +109,18 @@ base.yaml
     │   ├─→ led_ring.yaml (LED ring feedback)
     │   └─→ touchscreen.yaml (gesture state tracking)
     │
-    ├─→ devices/voice_assistant.yaml
-    │   (wake word detection, voice assistant lifecycle)
-    │
-    ├─→ devices/media_player.yaml
-    │   (speaker control, audio playback)
-    │   └─→ devices/includes/sounds.yaml (audio files)
-    │   └─→ devices/includes/media_player/on_announcement.yaml
-    │   └─→ devices/includes/media_player/on_idle.yaml
-    │
     └─→ devices/espressif/echoear/device.yaml
         ↓
         ├─→ hardware.yaml (raw I/O buses)
         ├─→ io_entities.yaml (GPIO/audio abstractions)
         ├─→ battery.yaml (I2C sensor)
+      ├─→ media_player.yaml
+      │   ├─→ devices/includes/media_player/common.yaml
+      │   ├─→ devices/includes/media_player/on_announcement.yaml
+      │   ├─→ devices/includes/media_player/on_idle.yaml
+      │   └─→ devices/includes/sounds.yaml
+      ├─→ voice_assistant.yaml
+      │   └─→ devices/includes/voice_assistant/common.yaml
         └─→ touchscreen.yaml (driver + gesture detection)
             ├─ devices/includes/touchscreen_on_touch.yaml (touch initiation)
             ├─ devices/includes/touchscreen_on_update.yaml (movement tracking)
@@ -140,8 +141,10 @@ base.yaml
 - **battery.yaml**: Sensor polling and calibration (self-contained)
 - **touchscreen.yaml**: Touchscreen driver and gesture state management (wires callbacks to globals)
 - **device.yaml**: Bundles all device-specific modules
-- **devices/voice_assistant.yaml**: Wake word detection (on-device or Home Assistant), voice assistant lifecycle, audio event dispatch
-- **devices/media_player.yaml**: Speaker control, audio playback, announcement pipeline, audio event dispatch
+- **devices/<vendor>/<model>/voice_assistant.yaml**: Device wrapper that imports shared voice assistant package
+- **devices/<vendor>/<model>/media_player.yaml**: Device wrapper/media_player definition that imports shared media package
+- **devices/includes/voice_assistant/common.yaml**: Shared wake-word, voice-assistant lifecycle, and control switches
+- **devices/includes/media_player/common.yaml**: Shared media-player globals and startup sound switch
 - **devices/includes/sounds.yaml**: Audio file definitions (partial, included as media_player.files array)
 - **devices/includes/touchscreen_on_touch.yaml**: Touch initiation handler (partial, included as touchscreen.on_touch action)
 - **devices/includes/touchscreen_on_update.yaml**: Touch movement tracking handler (partial, included as touchscreen.on_update action)
@@ -159,7 +162,7 @@ To add support for a new device (e.g., ESP32-C3):
    - `battery.yaml` (sensor config, may be identical)
    - `touchscreen.yaml` (display driver, may be identical)
 3. Update `base.yaml` to reference new device path
-4. No changes needed to shared modules: `devices/includes/`, `manager/`, `devices/voice_assistant.yaml`, or `devices/media_player.yaml`—they're device-agnostic
+4. Add device-local `media_player.yaml` and `voice_assistant.yaml` wrappers, then point them at shared packages in `devices/includes/`
 
 ## Gesture System
 
@@ -259,10 +262,10 @@ The framework provides a fully **event-driven voice assistant architecture** wit
 ### Architecture Overview
 
 ```
-devices/voice_assistant.yaml   ──publishes events──→  system_event (event bus)
-devices/media_player.yaml      ──publishes events──→  system_event
-va_microphone switch           ──publishes events──→  system_event
-api on_connect/disconnect      ──publishes events──→  system_event
+devices/<vendor>/<model>/voice_assistant.yaml   ──publishes events──→  system_event (event bus)
+devices/<vendor>/<model>/media_player.yaml      ──publishes events──→  system_event
+va_microphone_switch           ──publishes events──→  system_event
+api component                 ──publishes events──→  system_event
                                                            │
                                           event_router.yaml routes to:
                                                            │
@@ -283,8 +286,8 @@ api on_connect/disconnect      ──publishes events──→  system_event
 | `audio_ready` | audio manager | Startup sound flow complete; safe to arm wake word |
 | `announcement_started` | media_player | External HA announcement playback began |
 | `media_player_idle` | media_player | Announcement/sound playback finished |
-| `mic_muted` | va_microphone switch | Mic switch turned off (capture stopped) |
-| `mic_unmuted` | va_microphone switch | Mic switch turned on |
+| `mic_muted` | va_microphone_switch | Mic switch turned off (capture stopped) |
+| `mic_unmuted` | va_microphone_switch | Mic switch turned on |
 | `wake_word_stop_requested` | any component needing mic free | Signals Voice Manager to stop wake word |
 | `wake_word_location_changed` | wake word location select | Device/HA mode switched |
 | `voice_assist_detected` | micro_wake_word | Wake word detected |
@@ -299,7 +302,7 @@ api on_connect/disconnect      ──publishes events──→  system_event
 **`manager/voice.yaml`** — sole owner of wake word lifecycle:
 - Decides when to start/stop `micro_wake_word` and `voice_assistant`
 - Gate conditions: mic switch ON + API connected + VA not running
-- Starts `va_microphone` switch as part of `start_wake_word`
+- Starts `va_microphone_switch` as part of `start_wake_word`
 - Responds to: `audio_ready`, `media_player_idle`, `mic_unmuted`, `va_idle`, `va_detected`, `api_disconnected`, `announcement_started`, `mic_muted`, `wake_word_stop_requested`
 
 **`manager/audio.yaml`** — sound playback and audio feedback:
@@ -307,12 +310,12 @@ api on_connect/disconnect      ──publishes events──→  system_event
 - On `api_connected`: emits `wake_word_stop_requested`, waits for mic idle, plays startup sound, then emits `audio_ready`
 - Never calls `stop_wake_word` directly
 
-**`devices/voice_assistant.yaml`** — lifecycle events only:
+**`devices/includes/voice_assistant/common.yaml`** — lifecycle events and controls:
 - `on_wake_word_detected`: emits `wake_word_stop_requested`, waits for mic idle, plays optional beep, calls `voice_assistant.start`
 - `on_listening/stt_vad_end/tts_start/end/error`: publish phase events to event bus
-- `va_microphone` switch: `on_turn_off` calls `microphone.stop_capture` then emits `mic_muted`; `on_turn_on` emits `mic_unmuted` only (Voice Manager owns capture re-arm)
+- `va_microphone_switch` switch: `on_turn_off` calls `microphone.stop_capture` then emits `mic_muted`; `on_turn_on` emits `mic_unmuted` only (Voice Manager owns capture re-arm)
 
-**`devices/media_player.yaml`** — announcement signaling:
+**`devices/<vendor>/<model>/media_player.yaml` + includes** — announcement signaling:
 - `on_announcement`: emits `announcement_started` for external HA announcements only (internal sounds from `play_sound` are event-silent to avoid recursion)
 - `on_idle`: emits `media_player_idle` for external announcements only
 
@@ -355,10 +358,10 @@ Configure in Home Assistant UI (Wake word engine location):
 ### Adding to New Devices
 
 When adding a new device:
-- Configure I2S microphone as `box_mic` in `io_entities.yaml`
-- Configure I2S speaker as `box_speaker` in `io_entities.yaml`
+- Configure microphone entity as `va_microphone` in `io_entities.yaml`
+- Configure I2S speaker as `va_speaker` in `io_entities.yaml`
 - Load audio codec drivers in `hardware.yaml`
-- No changes needed to `devices/voice_assistant.yaml`, `devices/media_player.yaml`, `manager/audio.yaml`, or `manager/voice.yaml`
+- Reuse `devices/includes/voice_assistant/common.yaml` and `devices/includes/media_player/common.yaml`
 
 ## Internationalisation (i18n)
 

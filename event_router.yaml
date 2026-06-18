@@ -5,9 +5,9 @@
 ## All state managers subscribe to system_event and filter by event_type.
 ##
 ## Single Event Bus Pattern:
-##   - voice_assistant.yaml publishes events to system_event
-##   - media_player.yaml publishes events to system_event
-##   - va_microphone switch publishes mic_muted/unmuted to system_event
+##   - device-scoped voice_assistant packages publish events to system_event
+##   - device-scoped media_player packages publish events to system_event
+##   - va_microphone_switch publishes mic_muted/unmuted to system_event
 ##   - All state managers (voice, audio, led_ring, touchscreen) listen
 ##     to system_event and filter by event_type
 ##
@@ -35,7 +35,7 @@
 ##   - wake_word_location_changed: Wake word engine (device/HA) changed
 ##
 ## Usage Examples:
-##   Publish from voice_assistant.yaml:
+##   Publish from device voice_assistant package:
 ##     - event.trigger:
 ##         id: system_event
 ##         event_type: ${evt_va_idle}

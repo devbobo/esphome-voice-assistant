@@ -1,5 +1,15 @@
 ## EchoEar Device Configuration Orchestrator
 ## Bundles all device-specific modules for EchoEar variant
+##
+## Module Composition:
+##   - i18n: Device-specific labels and strings
+##   - hardware: Board and bus definitions
+##   - io_entities: High-level microphone/speaker/LED entities
+##   - battery: Fuel gauge sensors
+##   - touchscreen: Touch controller wiring
+##   - media_player: Device-local media player wiring + shared media includes
+##   - voice_assistant: Device-local voice assistant wiring + shared VA includes
+##
 ## Change the device package path in base.yaml to support different hardware
 
 packages:
@@ -8,3 +18,5 @@ packages:
   io_entities: !include io_entities.yaml
   battery: !include battery.yaml
   touchscreen: !include touchscreen.yaml
+  media_player: !include media_player.yaml
+  voice_assistant: !include voice_assistant.yaml

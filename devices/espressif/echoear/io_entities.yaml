@@ -62,7 +62,7 @@ light:
 ## Configuration: ES7210 external ADC, 16-bit 16kHz mono
 microphone:
   - platform: i2s_audio
-    id: box_mic
+    id: va_microphone
     i2s_audio_id: i2s_audio_bus
     i2s_din_pin: GPIO3
     adc_type: external
@@ -91,10 +91,19 @@ output:
 ## Configuration: ES8311 external DAC, 48kHz mono
 speaker:
   - platform: i2s_audio
-    id: box_speaker
+    id: va_speaker
     i2s_audio_id: i2s_audio_bus
     i2s_dout_pin: GPIO41
     dac_type: external
     audio_dac: es8311_dac
     sample_rate: 48000
     channel: mono
+
+## Audio Control Switches
+## User-facing speaker power control (GPIO15)
+switch:
+  - platform: gpio
+    name: ${label_speaker}
+    icon: "mdi:speaker"
+    pin: GPIO15
+    restore_mode: RESTORE_DEFAULT_ON
