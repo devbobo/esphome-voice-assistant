@@ -129,7 +129,6 @@ script:
           condition:
             lambda: >-
               return std::set<std::string>{
-                "${evt_media_player_idle}",
                 "${evt_va_idle}",
                 "${evt_audio_ready}",
                 "${evt_api_connected}"

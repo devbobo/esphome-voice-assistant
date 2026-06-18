@@ -6,4 +6,4 @@
         then:
             - event.trigger:
                     id: system_event
-                    event_type: ${evt_media_player_idle}
+                    event_type: ${evt_va_idle}

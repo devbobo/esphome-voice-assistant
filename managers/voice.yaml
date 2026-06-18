@@ -195,7 +195,7 @@ script:
             lambda: >-
               return std::set<std::string>{
                 "${evt_audio_ready}",
-                "${evt_media_player_idle}",
+                "${evt_va_idle}",
                 "${evt_mic_unmuted}"
               }.count(event_type) > 0;
           then:

@@ -57,7 +57,6 @@ substitutions:
   evt_api_connected:              "api_connected"
   evt_api_disconnected:           "api_disconnected"
   evt_announcement_started:       "announcement_started"
-  evt_media_player_idle:          "media_player_idle"
   evt_mic_muted:                  "mic_muted"
   evt_mic_unmuted:                "mic_unmuted"
   evt_audio_ready:                "audio_ready"
@@ -96,7 +95,6 @@ event:
       - ${evt_api_connected}
       - ${evt_api_disconnected}
       - ${evt_announcement_started}
-      - ${evt_media_player_idle}
       - ${evt_mic_muted}
       - ${evt_mic_unmuted}
       - ${evt_audio_ready}
@@ -183,7 +181,6 @@ event:
                 "${evt_api_connected}",
                 "${evt_api_disconnected}",
                 "${evt_announcement_started}",
-                "${evt_media_player_idle}",
                 "${evt_audio_ready}",
                 "${evt_va_detected}",
                 "${evt_va_idle}",
@@ -201,7 +198,6 @@ event:
           condition:
             lambda: >-
               return std::set<std::string>{
-                "${evt_media_player_idle}",
                 "${evt_mic_unmuted}",
                 "${evt_audio_ready}",
                 "${evt_va_idle}",
