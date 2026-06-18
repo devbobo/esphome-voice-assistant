@@ -33,12 +33,6 @@ substitutions:
 
 ## LED State Tracking
 globals:
-  - id: led_listening_active
-    type: bool
-    restore_value: no
-    initial_value: "false"
-    # Track whether listening mode is active (used to resume listening after announcements)
-
   - id: led_ring_state
     type: std::string
     restore_value: no
@@ -66,7 +60,6 @@ script:
             lambda: 'return event_type == "${evt_va_detected}";'
           then:
             - logger.log: "LED: Wake word detected - entering listening"
-            - lambda: id(led_listening_active) = true;
             - lambda: id(led_ring_state) = "listening";
             - event.trigger:
                 id: led_event
@@ -78,7 +71,6 @@ script:
             lambda: 'return event_type == "${evt_va_listening}";'
           then:
             - logger.log: "LED: Voice listening"
-            - lambda: id(led_listening_active) = true;
             - lambda: id(led_ring_state) = "listening";
             - event.trigger:
                 id: led_event
@@ -112,7 +104,6 @@ script:
             lambda: 'return event_type == "${evt_mic_muted}";'
           then:
             - logger.log: "LED: Microphone muted"
-            - lambda: id(led_listening_active) = false;
             - lambda: id(led_ring_state) = "muted";
             - event.trigger:
                 id: led_event
@@ -123,44 +114,22 @@ script:
           condition:
             lambda: 'return event_type == "${evt_mic_unmuted}";'
           then:
-            - logger.log: "LED: Microphone unmuted"
-            - if:
-                condition:
-                  lambda: 'return id(led_listening_active);'
-                then:
-                  - logger.log: "LED: Resuming listening mode"
-                  - lambda: id(led_ring_state) = "listening";
-                  - event.trigger:
-                      id: led_event
-                      event_type: "${led_event_listening}"
-                else:
-                  - logger.log: "LED: Entering idle mode"
-                  - lambda: id(led_ring_state) = "idle";
-                  - event.trigger:
-                      id: led_event
-                      event_type: "${led_event_idle}"
+            - logger.log: "LED: Microphone unmuted - entering idle"
+            - lambda: id(led_ring_state) = "idle";
+            - event.trigger:
+                id: led_event
+                event_type: "${led_event_idle}"
 
       # Voice complete
       - if:
           condition:
             lambda: 'return event_type == "${evt_va_idle}";'
           then:
-            - logger.log: "LED: Voice complete"
-            - if:
-                condition:
-                  lambda: 'return id(led_listening_active);'
-                then:
-                  - logger.log: "LED: Returning to listening"
-                  - lambda: id(led_ring_state) = "listening";
-                  - event.trigger:
-                      id: led_event
-                      event_type: "${led_event_listening}"
-                else:
-                  - logger.log: "LED: Returning to idle"
-                  - lambda: id(led_ring_state) = "idle";
-                  - event.trigger:
-                      id: led_event
-                      event_type: "${led_event_idle}"
+            - logger.log: "LED: Voice complete - returning to idle"
+            - lambda: id(led_ring_state) = "idle";
+            - event.trigger:
+                id: led_event
+                event_type: "${led_event_idle}"
 
       # API connected
       - if:
@@ -168,7 +137,6 @@ script:
             lambda: 'return event_type == "${evt_api_connected}";'
           then:
             - logger.log: "LED: API connected - entering idle"
-            - lambda: id(led_listening_active) = false;
             - lambda: id(led_ring_state) = "idle";
             - event.trigger:
                 id: led_event
