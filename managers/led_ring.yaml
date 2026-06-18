@@ -174,4 +174,4 @@ event:
       - ${led_event_processing}
       - ${led_event_idle}
       - ${led_event_error}
-    on_event: !include ${led_ring_event_handler}  # Device-specific LED control logic
+    on_event: ${led_ring_event_handler}  # Device-specific LED control logic
