@@ -39,6 +39,12 @@ globals:
     initial_value: "false"
     # Track whether listening mode is active (used to resume listening after announcements)
 
+  - id: led_ring_state
+    type: std::string
+    restore_value: no
+    initial_value: '"idle"'
+    # Canonical ring state shared by physical LED ring and virtual screen ring
+
 script:
   ################################################################################
   ## LED State Manager Event Handler
@@ -61,9 +67,44 @@ script:
           then:
             - logger.log: "LED: Wake word detected - entering listening"
             - lambda: id(led_listening_active) = true;
+            - lambda: id(led_ring_state) = "listening";
             - event.trigger:
                 id: led_event
                 event_type: "${led_event_listening}"
+
+      # Voice pipeline listening state
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_va_listening}";'
+          then:
+            - logger.log: "LED: Voice listening"
+            - lambda: id(led_listening_active) = true;
+            - lambda: id(led_ring_state) = "listening";
+            - event.trigger:
+                id: led_event
+                event_type: "${led_event_listening}"
+
+      # Voice thinking/processing
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_va_thinking}";'
+          then:
+            - logger.log: "LED: Voice processing"
+            - lambda: id(led_ring_state) = "processing";
+            - event.trigger:
+                id: led_event
+                event_type: "${led_event_processing}"
+
+      # Announcements/replies are treated as processing
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_announcement_started}";'
+          then:
+            - logger.log: "LED: Announcement started - processing"
+            - lambda: id(led_ring_state) = "processing";
+            - event.trigger:
+                id: led_event
+                event_type: "${led_event_processing}"
 
       # Microphone muted
       - if:
@@ -72,6 +113,7 @@ script:
           then:
             - logger.log: "LED: Microphone muted"
             - lambda: id(led_listening_active) = false;
+            - lambda: id(led_ring_state) = "muted";
             - event.trigger:
                 id: led_event
                 event_type: "${led_event_muted}"
@@ -87,11 +129,13 @@ script:
                   lambda: 'return id(led_listening_active);'
                 then:
                   - logger.log: "LED: Resuming listening mode"
+                  - lambda: id(led_ring_state) = "listening";
                   - event.trigger:
                       id: led_event
                       event_type: "${led_event_listening}"
                 else:
                   - logger.log: "LED: Entering idle mode"
+                  - lambda: id(led_ring_state) = "idle";
                   - event.trigger:
                       id: led_event
                       event_type: "${led_event_idle}"
@@ -107,11 +151,13 @@ script:
                   lambda: 'return id(led_listening_active);'
                 then:
                   - logger.log: "LED: Returning to listening"
+                  - lambda: id(led_ring_state) = "listening";
                   - event.trigger:
                       id: led_event
                       event_type: "${led_event_listening}"
                 else:
                   - logger.log: "LED: Returning to idle"
+                  - lambda: id(led_ring_state) = "idle";
                   - event.trigger:
                       id: led_event
                       event_type: "${led_event_idle}"
@@ -123,9 +169,25 @@ script:
           then:
             - logger.log: "LED: API connected - entering idle"
             - lambda: id(led_listening_active) = false;
+            - lambda: id(led_ring_state) = "idle";
             - event.trigger:
                 id: led_event
                 event_type: "${led_event_idle}"
+
+      # API disconnect / VA error -> error state
+      - if:
+          condition:
+            lambda: >-
+              return std::set<std::string>{
+                "${evt_api_disconnected}",
+                "${evt_va_error}"
+              }.count(event_type) > 0;
+          then:
+            - logger.log: "LED: Error state"
+            - lambda: id(led_ring_state) = "error";
+            - event.trigger:
+                id: led_event
+                event_type: "${led_event_error}"
 
 
 ## LED Event Platform

@@ -69,15 +69,15 @@ display:
         }
       }
 
-      // Assistant state halo
+      // Shared ring state halo (sourced from led_ring_state manager)
       Color state_color = Color(52, 61, 82);
-      if (id(dm_assistant_state) == "listening") {
+      if (id(led_ring_state) == "listening") {
         state_color = Color(32, 166, 255);
-      } else if (id(dm_assistant_state) == "thinking") {
-        state_color = Color(245, 171, 53);
-      } else if (id(dm_assistant_state) == "replying") {
+      } else if (id(led_ring_state) == "processing") {
         state_color = Color(71, 210, 123);
-      } else if (id(dm_assistant_state) == "error") {
+      } else if (id(led_ring_state) == "muted") {
+        state_color = Color(222, 74, 74);
+      } else if (id(led_ring_state) == "error") {
         state_color = Color(222, 74, 74);
       }
 
@@ -92,7 +92,7 @@ display:
       }
 
       // Error bar for visibility regardless of current page
-      if (id(dm_assistant_state) == "error") {
+      if (id(led_ring_state) == "error") {
         it.filled_rectangle(0, 334, width, 26, Color(166, 39, 39));
       }
 
