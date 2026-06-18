@@ -10,7 +10,7 @@
 ##       api_disconnected, announcement_started, mic_muted,
 ##       wake_word_stop_requested
 ##   - Start triggers:
-##       audio_ready, media_player_idle, mic_unmuted, va_idle
+##       audio_ready, mic_unmuted, va_idle
 ##   - Direct starts:
 ##       va_detected (calls voice_assistant.start with detected wake word)
 ##       wake_word_location_changed (switches device/HA mode)
@@ -187,7 +187,7 @@ script:
           condition:
             lambda: 'return event_type == "${evt_va_idle}";'
           then:
-            - logger.log: "Voice: Session ended; awaiting media_player_idle for wake-word rearm"
+            - logger.log: "Voice: Session ended; va_idle received"
       
       # Audio ready - start wake word after startup sound flow is complete
       - if:

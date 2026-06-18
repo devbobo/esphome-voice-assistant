@@ -21,7 +21,6 @@
 ##   - api_connected:            Connected to Home Assistant
 ##   - api_disconnected:         Disconnected from Home Assistant
 ##   - announcement_started:     External HA announcement began (playback semantic)
-##   - media_player_idle:        Media player finished playback
 ##   - mic_muted:                Microphone switch toggled off (capture stopped)
 ##   - mic_unmuted:              Microphone switch toggled on
 ##   - audio_ready:              Startup sound flow completed; safe to re-arm wake word
@@ -168,6 +167,8 @@ event:
                 "${evt_api_disconnected}",
                 "${evt_announcement_started}",
                 "${evt_audio_ready}",
+                "${evt_mic_muted}",
+                "${evt_mic_unmuted}",
                 "${evt_va_detected}",
                 "${evt_va_idle}",
                 "${evt_va_listening}",

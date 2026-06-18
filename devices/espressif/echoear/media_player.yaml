@@ -5,8 +5,8 @@
 ## Publishes:
 ##   - announcement_started: external HA announcement playback began
 ##                           (playback-state semantic; triggers wake word stop)
-##   - media_player_idle:    announcement or sound finished playback
-##                           (triggers wake word re-arm if external)
+##   - va_idle:              announcement finished playback (external only)
+##                           (canonical idle signal for manager re-arm)
 ##
 ## Note: Internal sounds (play_sound script) do NOT emit events to avoid
 ##       event recursion. last_announcement_was_external tracks this.
