@@ -1,19 +1,9 @@
-# Voice Assistant Configuration
-# Voice assistant and micro wake word with on-device or Home Assistant wake word detection
-#
-# Responsibilities:
-#   - Defines micro_wake_word (device mode) and voice_assistant components
-#   - Publishes lifecycle events to system_event for state managers
-#   - Does NOT manage wake word start/stop (owned by Voice State Manager)
-#
-# on_wake_word_detected:
-#   - Emits wake_word_stop_requested (lets Voice Manager stop engine cleanly)
-#   - Waits for mic capture to stop before playing wake sound
-#   - Calls voice_assistant.start with detected wake word
-#
-# va_microphone switch:
-#   - on_turn_off: microphone.stop_capture + emit mic_muted
-#   - on_turn_on:  emit mic_unmuted (Voice Manager handles capture via start_wake_word)
+# Voice Assistant Common Package
+# Reusable voice assistant and wake word configuration for any device
+# that provides:
+#   - microphone id: va_microphone
+#   - media_player id: va_media_player
+
 micro_wake_word:
   id: mww
   models:
@@ -38,13 +28,14 @@ micro_wake_word:
               id: play_sound
               priority: true
               sound_file: !lambda return id(wake_word_triggered_sound);
+          - script.wait: play_sound
     - voice_assistant.start:
         wake_word: !lambda return wake_word;
 
 voice_assistant:
   id: va
-  microphone: box_mic
-  media_player: external_media_player
+  microphone: va_microphone
+  media_player: va_media_player
   micro_wake_word: mww
   noise_suppression_level: 2
   auto_gain: 31dBFS
@@ -72,7 +63,6 @@ voice_assistant:
         event_type: ${evt_va_replying}
 
   on_end:
-    # Publish idle event for state managers to handle audio waiting and wake word restart
     - event.trigger:
         id: system_event
         event_type: ${evt_va_idle}
@@ -82,13 +72,12 @@ voice_assistant:
     - delay: 1s
     - if:
         condition:
-          switch.is_on: va_microphone
+          switch.is_on: va_microphone_switch
         then:
           - logger.log: "Microphone enabled"
         else:
           - logger.log: "Microphone disabled"
 
-# Select to choose wake word location
 select:
   - platform: template
     entity_category: config
@@ -106,7 +95,6 @@ select:
           id: system_event
           event_type: "wake_word_location_changed"
 
-# Wake sound switch
 switch:
   - platform: template
     name: Wake sound
@@ -118,13 +106,13 @@ switch:
 
   - platform: template
     name: Microphone
-    id: va_microphone
+    id: va_microphone_switch
     icon: "mdi:microphone"
     optimistic: true
     restore_mode: RESTORE_DEFAULT_OFF
     on_turn_off:
       - microphone.stop_capture:
-          id: box_mic
+          id: va_microphone
       - event.trigger:
           id: system_event
           event_type: ${evt_mic_muted}
@@ -132,11 +120,12 @@ switch:
       - event.trigger:
           id: system_event
           event_type: ${evt_mic_unmuted}
+
 script:
   - id: toggle_voice_assistant
     then:
       - media_player.stop:
-          id: external_media_player
+          id: va_media_player
       - if:
           condition:
             not:

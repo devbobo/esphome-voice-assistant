@@ -40,6 +40,11 @@ globals:
     restore_value: no
     initial_value: "false"
     # Ensures startup sound plays only once after API connection
+  - id: api_connect_flow_completed
+    type: bool
+    restore_value: no
+    initial_value: "false"
+    # Prevent duplicate api_connected handling while a client session is active
 
 ################################################################################
 ## Audio State Manager Event Handler
@@ -73,6 +78,7 @@ script:
                       id: play_sound
                       priority: true
                       sound_file: !lambda return id(wake_word_triggered_sound);
+                  - script.wait: play_sound
                   - delay: 300ms
 
       # API connected
@@ -80,36 +86,87 @@ script:
           condition:
             lambda: 'return event_type == "${evt_api_connected}";'
           then:
-            - logger.log: "Audio: API connected - preparing startup sound"
-            - event.trigger:
-                id: system_event
-                event_type: "${evt_wake_word_stop_requested}"
-            - wait_until:
-                condition:
-                  - not:
-                      microphone.is_capturing
-                timeout: 3s
-            - delay: 200ms
-            - logger.log: "Audio: API connected - playing startup sound"
             - if:
                 condition:
-                  and:
-                    - lambda: return !id(boot_sound_played);
-                    - switch.is_on: startup_sound_switch
+                  lambda: return !id(api_connect_flow_completed);
                 then:
-                  - lambda: id(boot_sound_played) = true;
-                  - script.execute:
-                      id: play_sound
-                      priority: true
-                      sound_file: !lambda return id(ready_sound);
+                  - lambda: id(api_connect_flow_completed) = true;
+                  - logger.log: "Audio: API connected - preparing startup sound"
                   - event.trigger:
                       id: system_event
-                      event_type: "${evt_audio_ready}"
+                      event_type: "${evt_wake_word_stop_requested}"
+                  - wait_until:
+                      condition:
+                        - not:
+                            microphone.is_capturing
+                      timeout: 3s
+                  - delay: 200ms
+                  - logger.log: "Audio: API connected - playing startup sound"
+                  - if:
+                      condition:
+                        and:
+                          - lambda: return !id(boot_sound_played);
+                          - switch.is_on: startup_sound_switch
+                      then:
+                        - lambda: id(boot_sound_played) = true;
+                        - script.execute:
+                            id: play_sound
+                            priority: true
+                            sound_file: !lambda return id(ready_sound);
+                        - script.wait: play_sound
+                        - event.trigger:
+                            id: system_event
+                            event_type: "${evt_audio_ready}"
+                      else:
+                        - logger.log: "Audio: API reconnected - skipping startup sound"
+                        - event.trigger:
+                            id: system_event
+                            event_type: "${evt_audio_ready}"
                 else:
-                  - logger.log: "Audio: API reconnected - skipping startup sound"
-                  - event.trigger:
-                      id: system_event
-                      event_type: "${evt_audio_ready}"
+                  - logger.log: "Audio: Duplicate api_connected ignored"
+
+      # API disconnected - allow next connect event to run startup/rearm flow
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_api_disconnected}";'
+          then:
+            - lambda: id(api_connect_flow_completed) = false;
+            - logger.log: "Audio: API disconnected - reset connect flow state"
       - logger.log:
           format: "Audio Manager: Handled event %s"
           args: ["event_type.c_str()"]
+
+  - id: play_sound
+    parameters:
+      priority: bool
+      sound_file: "audio::AudioFile*"
+    then:
+      - lambda: |-
+          if (priority) {
+            id(va_media_player)
+              ->make_call()
+              .set_command(media_player::MediaPlayerCommand::MEDIA_PLAYER_COMMAND_STOP)
+              .set_announcement(true)
+              .perform();
+          }
+          if ((id(va_media_player).state != media_player::MediaPlayerState::MEDIA_PLAYER_STATE_ANNOUNCING) || priority) {
+            id(va_media_player)->play_file(sound_file, true, false);
+          }
+      # The media pipeline may transition to ANNOUNCING asynchronously.
+      # Wait for playback lifecycle rather than sampling speaker state once.
+      - wait_until:
+          condition:
+            media_player.is_announcing:
+          timeout: 2s
+      - wait_until:
+          condition:
+            not:
+              media_player.is_announcing:
+          timeout: 30s
+      - wait_until:
+          condition:
+            not:
+              speaker.is_playing:
+                id: va_speaker
+          timeout: 5s
+      - delay: 300ms

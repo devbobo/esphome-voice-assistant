@@ -17,11 +17,11 @@
 ##   - Executes:
 ##       micro_wake_word.start/stop,
 ##       voice_assistant.start/stop/start_continuous,
-##       switch.turn_on: va_microphone (owned by start_wake_word)
+##       switch.turn_on: va_microphone_switch (owned by start_wake_word)
 ##   - Owns: All wake word state and start/stop conditions
 ##
 ## Gate Conditions (evaluate_wake_word_state):
-##   1. va_microphone switch must be ON
+##   1. va_microphone_switch must be ON
 ##   2. Voice assistant must not be running
 ##   3. API client must be connected
 ##
@@ -29,7 +29,7 @@
 ##   - Voice State Manager: sole executor of wake word start/stop.
 ##   - Audio State Manager: manages sound playback only.
 ##   - Event Router: routes events; never executes wake word actions.
-##   - voice_assistant.yaml: publishes lifecycle events only.
+##   - devices/includes/voice_assistant/common.yaml: publishes lifecycle events.
 ################################################################################
 
 globals:
@@ -49,7 +49,7 @@ script:
   ## Evaluate Wake Word State
   ##
   ## Determines whether the wake word should be active based on:
-  ##   1. Microphone enabled (va_microphone switch ON)
+  ##   1. Microphone enabled (va_microphone_switch ON)
   ##   2. No announcement is playing
   ##   3. No voice assistant session is active
   ##   4. Connected to Home Assistant when using HA wake word mode
@@ -63,7 +63,7 @@ script:
           bool should_run = true;
           
           // Check: microphone must be enabled
-          if (!id(va_microphone).state) {
+          if (!id(va_microphone_switch).state) {
             should_run = false;
           }
           
@@ -87,6 +87,12 @@ script:
   ################################################################################
   - id: start_wake_word
     then:
+      # voice_assist_idle can fire just before VA fully reaches IDLE.
+      - wait_until:
+          condition:
+            not:
+              voice_assistant.is_running:
+          timeout: 2s
       - script.execute: evaluate_wake_word_state
       - if:
           condition:
@@ -100,8 +106,8 @@ script:
                           media_player.is_announcing:
                       - not:
                           speaker.is_playing:
-                            id: box_speaker
-            - switch.turn_on: va_microphone
+                            id: va_speaker
+            - switch.turn_on: va_microphone_switch
             - if:
                 condition:
                   lambda: >-
@@ -131,6 +137,9 @@ script:
     then:
       - logger.log: "Voice: Stopping wake word"
       - script.stop: start_wake_word
+      # Ensure I2S mic path is released before any announcement playback.
+      - microphone.stop_capture:
+          id: va_microphone
       - if:
           condition:
             lambda: >-
@@ -146,7 +155,6 @@ script:
                 == "${wake_word_location_device}";
           then:
             - micro_wake_word.stop:
-            # - microphone.stop_capture:
             - delay: 100ms
 
   ################################################################################
@@ -179,13 +187,7 @@ script:
           condition:
             lambda: 'return event_type == "${evt_va_idle}";'
           then:
-            # Wait for announcement to start (with timeout in case no TTS response)
-            - wait_until:
-                condition:
-                  media_player.is_announcing:
-                timeout: 0.5s
-            - logger.log: "Voice: Session ended, re-evaluating wake word"
-            - script.execute: start_wake_word
+            - logger.log: "Voice: Session ended; awaiting media_player_idle for wake-word rearm"
       
       # Audio ready - start wake word after startup sound flow is complete
       - if:

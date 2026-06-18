@@ -5,9 +5,9 @@
 ## All state managers subscribe to system_event and filter by event_type.
 ##
 ## Single Event Bus Pattern:
-##   - voice_assistant.yaml publishes events to system_event
-##   - media_player.yaml publishes events to system_event
-##   - va_microphone switch publishes mic_muted/unmuted to system_event
+##   - device-scoped voice_assistant packages publish events to system_event
+##   - device-scoped media_player packages publish events to system_event
+##   - va_microphone_switch publishes mic_muted/unmuted to system_event
 ##   - All state managers (voice, audio, led_ring, touchscreen) listen
 ##     to system_event and filter by event_type
 ##
@@ -35,7 +35,7 @@
 ##   - wake_word_location_changed: Wake word engine (device/HA) changed
 ##
 ## Usage Examples:
-##   Publish from voice_assistant.yaml:
+##   Publish from device voice_assistant package:
 ##     - event.trigger:
 ##         id: system_event
 ##         event_type: ${evt_va_idle}
@@ -146,18 +146,10 @@ event:
             lambda: >-
               return std::set<std::string>{
                 "${evt_api_connected}",
+                "${evt_api_disconnected}",
                 "${evt_va_detected}"
               }.count(event_type) > 0;
           then:
-            - if:
-                condition:
-                  - microphone.is_capturing
-                then:
-                  - wait_until:
-                      condition:
-                        - not:
-                            microphone.is_capturing
-                  - delay: 1500ms
             - script.execute:
                 id: audio_state_manager_handle_event
                 event_type: !lambda return event_type;
@@ -178,7 +170,7 @@ event:
                 event_type: !lambda return event_type;
 
 packages:
-  audio_manager: !include manager/audio.yaml
-  voice_manager: !include manager/voice.yaml
-  led_ring_manager: !include manager/led_ring.yaml
-  touchscreen_manager: !include manager/touchscreen.yaml
+  audio_manager: !include managers/audio.yaml
+  voice_manager: !include managers/voice.yaml
+  led_ring_manager: !include managers/led_ring.yaml
+  touchscreen_manager: !include managers/touchscreen.yaml

@@ -49,11 +49,9 @@ wifi:
 # Package orchestration - loads device config and shared features
 # Load order: config → i18n → device → event_router
 # Event router defines the system_event platform that all state managers subscribe to
-# State managers load before voice_assistant so they're ready to listen for events
+# Device package loads device-scoped media_player and voice_assistant modules
 packages:
   config: !include config.yaml
   i18n: !include i18n.yaml
   device: !include devices/${device}/device.yaml
   event_router: !include event_router.yaml
-  media_player: !include devices/media_player.yaml
-  voice_assistant: !include devices/voice_assistant.yaml

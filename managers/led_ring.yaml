@@ -4,9 +4,10 @@
 ## Listens to system_event and makes LED ring state decisions independently.
 ## Converts system events into LED ring state changes.
 ##
-## Integration:
-##   - Listens to: system_event (wake_word_detected, mic_muted/unmuted, voice_assist_idle, announcements, api_connected)
-##   - Outputs: LED events via led_event platform
+## Architecture:
+##   - Subscribes to: system_event via event_router routing
+##   - Filters for: wake_word_detected, mic_muted/unmuted, voice_assist_idle, api_connected
+##   - Publishes: LED events via led_event platform
 ##   - Implementation: Device-specific handlers consume led_event
 ##
 ## LED Ring States:
@@ -16,6 +17,10 @@
 ##   - processing: Voice command recognized
 ##   - error: System error or communication issue
 ##
+## Separation of Concerns:
+##   - LED Ring Manager: sole owner of LED state decisions.
+##   - Event Router: routes events; never executes LED actions.
+##   - Device implementations: handle hardware-specific LED animation/color.
 ################################################################################
 
 substitutions:
@@ -35,6 +40,12 @@ globals:
     # Track whether listening mode is active (used to resume listening after announcements)
 
 script:
+  ################################################################################
+  ## LED State Manager Event Handler
+  ##
+  ## Called from event_router when system events occur.
+  ## Makes LED state decisions based on voice and audio events.
+  ################################################################################
   - id: led_state_manager_handle_event
     parameters:
       event_type: string
@@ -105,7 +116,6 @@ script:
                       id: led_event
                       event_type: "${led_event_idle}"
 
-
       # API connected
       - if:
           condition:
@@ -134,15 +144,3 @@ event:
       - ${led_event_processing}
       - ${led_event_idle}
       - ${led_event_error}
-
-## LED Ring Master Control
-##
-## Global toggle to enable/disable LED feedback.
-##
-switch:
-  - platform: template
-    id: led_ring_enabled
-    name: "LED Ring"
-    icon: "mdi:led-on"
-    optimistic: true
-    restore_mode: RESTORE_DEFAULT_ON

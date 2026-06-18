@@ -1,0 +1,3 @@
+# EchoEar Voice Assistant Package
+packages:
+  voice_assistant_common: !include ../../includes/voice_assistant/common.yaml
