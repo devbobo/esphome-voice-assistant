@@ -75,8 +75,8 @@ display:
         state_color = Color(222, 74, 74);
       }
 
-      it.filled_circle(center_x, center_y, 180, Color(18, 24, 36));
-      it.filled_circle(center_x, center_y, 162, state_color);
+      // it.filled_circle(center_x, center_y, 180, Color(18, 24, 36));
+      it.filled_circle(center_x, center_y, 170, state_color);
       it.filled_circle(center_x, center_y, 144, Color(6, 8, 14));
 
       // Detail mode overlay
