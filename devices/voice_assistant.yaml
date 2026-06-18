@@ -1,0 +1,147 @@
+# Voice Assistant Configuration
+# Voice assistant and micro wake word with on-device or Home Assistant wake word detection
+#
+# Responsibilities:
+#   - Defines micro_wake_word (device mode) and voice_assistant components
+#   - Publishes lifecycle events to system_event for state managers
+#   - Does NOT manage wake word start/stop (owned by Voice State Manager)
+#
+# on_wake_word_detected:
+#   - Emits wake_word_stop_requested (lets Voice Manager stop engine cleanly)
+#   - Waits for mic capture to stop before playing wake sound
+#   - Calls voice_assistant.start with detected wake word
+#
+# va_microphone switch:
+#   - on_turn_off: microphone.stop_capture + emit mic_muted
+#   - on_turn_on:  emit mic_unmuted (Voice Manager handles capture via start_wake_word)
+micro_wake_word:
+  id: mww
+  models:
+    - okay_nabu
+    - hey_jarvis
+    - alexa
+  on_wake_word_detected:
+    - event.trigger:
+        id: system_event
+        event_type: "${evt_wake_word_stop_requested}"
+    - wait_until:
+        condition:
+          - not:
+              microphone.is_capturing
+        timeout: 3s
+    - delay: 200ms
+    - if:
+        condition:
+          switch.is_on: wake_sound
+        then:
+          - script.execute:
+              id: play_sound
+              priority: true
+              sound_file: !lambda return id(wake_word_triggered_sound);
+    - voice_assistant.start:
+        wake_word: !lambda return wake_word;
+
+voice_assistant:
+  id: va
+  microphone: box_mic
+  media_player: external_media_player
+  micro_wake_word: mww
+  noise_suppression_level: 2
+  auto_gain: 31dBFS
+  volume_multiplier: 2.0
+
+  on_listening:
+    - logger.log: "Voice assistant listening"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_listening}
+
+  on_stt_vad_end:
+    - logger.log: "Speech detected, processing..."
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_thinking}
+
+  on_stt_end:
+    - logger.log: "Speech transcription complete"
+
+  on_tts_start:
+    - logger.log: "Playing response"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_replying}
+
+  on_end:
+    # Publish idle event for state managers to handle audio waiting and wake word restart
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_idle}
+
+  on_error:
+    - logger.log: "Voice assistant error"
+    - delay: 1s
+    - if:
+        condition:
+          switch.is_on: va_microphone
+        then:
+          - logger.log: "Microphone enabled"
+        else:
+          - logger.log: "Microphone disabled"
+
+# Select to choose wake word location
+select:
+  - platform: template
+    entity_category: config
+    name: Wake word engine location
+    id: wake_word_engine_location
+    icon: "mdi:account-voice"
+    optimistic: true
+    restore_value: true
+    options:
+      - ${wake_word_location_ha}
+      - ${wake_word_location_device}
+    initial_option: ${wake_word_location_device}
+    on_value:
+      - event.trigger:
+          id: system_event
+          event_type: "wake_word_location_changed"
+
+# Wake sound switch
+switch:
+  - platform: template
+    name: Wake sound
+    id: wake_sound
+    icon: mdi:bullhorn
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: template
+    name: Microphone
+    id: va_microphone
+    icon: "mdi:microphone"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_off:
+      - microphone.stop_capture:
+          id: box_mic
+      - event.trigger:
+          id: system_event
+          event_type: ${evt_mic_muted}
+    on_turn_on:
+      - event.trigger:
+          id: system_event
+          event_type: ${evt_mic_unmuted}
+script:
+  - id: toggle_voice_assistant
+    then:
+      - media_player.stop:
+          id: external_media_player
+      - if:
+          condition:
+            not:
+              voice_assistant.is_running:
+          then:
+            - voice_assistant.start:
+          else:
+            - voice_assistant.stop:

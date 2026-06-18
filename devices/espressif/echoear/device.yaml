@@ -1,0 +1,10 @@
+## EchoEar Device Configuration Orchestrator
+## Bundles all device-specific modules for EchoEar variant
+## Change the device package path in base.yaml to support different hardware
+
+packages:
+  i18n: !include i18n.yaml
+  hardware: !include hardware.yaml
+  io_entities: !include io_entities.yaml
+  battery: !include battery.yaml
+  touchscreen: !include touchscreen.yaml

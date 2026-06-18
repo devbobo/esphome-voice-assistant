@@ -1,0 +1,19 @@
+media_player:
+  - platform: speaker
+    name: None
+    id: va_media_player
+    volume_min: 0.5
+    volume_max: 0.7 # don't go higher than 0.8
+    announcement_pipeline:
+      speaker: va_speaker
+      format: FLAC
+      sample_rate: 48000
+      num_channels: 1
+    buffer_size: 250000
+
+    on_announcement:
+      !include ../../includes/media_player/on_announcement.yaml
+    on_idle:
+      !include ../../includes/media_player/on_idle.yaml
+
+    files: !include ../../includes/sounds.yaml

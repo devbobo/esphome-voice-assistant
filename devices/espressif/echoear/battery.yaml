@@ -1,0 +1,86 @@
+## EchoEar Battery Monitoring Module
+## Polls BQ27220 battery fuel gauge via I2C
+## Calculates voltage and percentage with calibration
+
+globals:
+  - id: last_battery_percent
+    type: int
+    restore_value: no
+    initial_value: "-1"
+
+# Battery voltage polling via I2C (BQ27220 at 0x55, register 0x08)
+# Polls every 60 seconds and publishes voltage to battery_voltage sensor
+interval:
+  - interval: 60s
+    then:
+      - lambda: |-
+          using esphome::i2c::ERROR_OK;
+          constexpr uint8_t BQ_ADDR = 0x55;
+          constexpr uint8_t REG_VOLTAGE = 0x08;
+
+          uint8_t reg = REG_VOLTAGE;
+          uint8_t rx[2] = {0};
+
+          if (id(bus_a)->write(BQ_ADDR, &reg, 1) != ERROR_OK) {
+            ESP_LOGW("bq27220", "I2C write failed");
+            return;
+          }
+          delayMicroseconds(200);
+          if (id(bus_a)->read(BQ_ADDR, rx, 2) != ERROR_OK) {
+            ESP_LOGW("bq27220", "I2C read failed");
+            return;
+          }
+
+          uint16_t mv = (uint16_t(rx[1]) << 8) | rx[0];
+          id(battery_voltage).publish_state(mv / 1000.0f);
+
+# Battery sensors
+# battery_voltage: Raw voltage from BQ27220 (0-5V range)
+# battery_percentage: Calibrated percentage (0-100%) with linear scaling
+#   2.8V = 0%, 4.2V = 100% (typical Li-ion range)
+sensor:
+  - platform: template
+    id: battery_voltage
+    name: "${label_battery_voltage}"
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    device_class: voltage
+    state_class: measurement
+    on_value:
+      then:
+        - sensor.template.publish:
+            id: battery_percentage
+            state: !lambda 'return x;'
+
+  - platform: template
+    id: battery_percentage
+    name: "${label_battery_percentage}"
+    update_interval: never
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    icon: mdi:battery-medium
+    filters:
+      - calibrate_linear:
+          method: exact
+          datapoints:
+            - 2.80 -> 0.0
+            - 3.10 -> 10.0
+            - 3.30 -> 20.0
+            - 3.45 -> 30.0
+            - 3.60 -> 40.0
+            - 3.70 -> 50.0
+            - 3.75 -> 60.0
+            - 3.80 -> 70.0
+            - 3.90 -> 80.0
+            - 4.00 -> 90.0
+            - 4.20 -> 100.0
+      - lambda: |-
+          if (x > 100) return 100;
+          if (x < 0) return 0;
+          return x;
+    on_value:
+      then:
+        - lambda: |-
+            int current = (int) x;
+            if (current == id(last_battery_percent)) return;
+            id(last_battery_percent) = current;

@@ -1,0 +1,59 @@
+## EchoEar Base Configuration
+## Main entry point that orchestrates all modules via packages
+## This file sets up core ESPHome settings and imports all functional modules
+substitutions:
+  name: esphome-voice-assistant-aec6f4
+  friendly_name: ESPHome Voice Assistant
+  device : espressif/echoear
+  # Display configuration
+  rotate_display: "0"             # Display rotation (0/90/180/270) - adjust for your mounting angle
+  # Gesture timing thresholds (milliseconds) - shared across all devices
+  long_press_duration: "500"      # Hold duration to trigger long press (500ms)
+  double_press_window: "400"      # Time window for second tap to count as double press (400ms)
+  # Audio configuration - sound file URLs defined in config.yaml
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  min_version: 2025.9.0
+  name_add_mac_suffix: false
+  platformio_options:
+    board_build.flash_mode: dio
+  on_boot:
+    - priority: 800
+      then:
+        - logger.log: "Boot guard: forcing voice engines off"
+        - lambda: id(va).set_use_wake_word(false);
+        - voice_assistant.stop:
+        - micro_wake_word.stop:
+
+captive_portal:
+
+http_request:
+
+logger:
+  level: DEBUG
+
+ota:
+  - platform: esphome
+    id: ota_esphome
+    allow_partition_access: true
+
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+
+wifi:
+  ap:
+
+# Package orchestration - loads device config and shared features
+# Load order: config → i18n → device → event_router
+# Event router defines the system_event platform that all state managers subscribe to
+# State managers load before voice_assistant so they're ready to listen for events
+packages:
+  config: !include config.yaml
+  i18n: !include i18n.yaml
+  device: !include devices/${device}/device.yaml
+  event_router: !include event_router.yaml
+  media_player: !include devices/media_player.yaml
+  voice_assistant: !include devices/voice_assistant.yaml

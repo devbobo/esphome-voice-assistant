@@ -1,0 +1,16 @@
+## Touchscreen On Update Handler
+## Tracks current touch position during active touch event
+##
+## Requires globals from touchscreen_state_manager.yaml:
+##   - gs_touch_active, gs_last_x/y
+
+then:
+  - lambda: |-
+      if (!id(gs_touch_active)) return;
+      for (auto &t : touches) {
+        if (t.state >= 1 && t.state <= 2) {
+          id(gs_last_x) = t.x;
+          id(gs_last_y) = t.y;
+          break;
+        }
+      }

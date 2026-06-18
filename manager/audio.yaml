@@ -1,0 +1,115 @@
+################################################################################
+## Audio State Manager
+##
+## Manages audio feedback sounds during voice interactions and boot.
+## Does NOT control microphone or wake word state directly; instead
+## publishes events for Voice State Manager to react to.
+##
+## Architecture:
+##   - Subscribes to: system_event via event_router routing
+##   - Filters for:
+##       voice_assist_detected: play wake-word sound if enabled
+##       api_connected: stop wake word (via event), play startup sound
+##   - Publishes:
+##       wake_word_stop_requested: before playing startup sound
+##       audio_ready: after startup sound flow completes (signals
+##                    Voice Manager to re-arm wake word)
+##   - Executes: play_sound (with priority queuing)
+##
+## Boot Flow:
+##   api_connected
+##     → emit wake_word_stop_requested
+##     → wait for mic to stop capturing
+##     → play startup sound (first boot) or skip (reconnect)
+##     → emit audio_ready
+##
+## Separation of Concerns:
+##   - Audio State Manager: sound playback and audio feedback only.
+##   - Voice State Manager: sole owner of wake word and capture.
+##   - Event Router: routes events; no audio actions.
+################################################################################
+
+################################################################################
+## Audio State Tracking
+##
+## Globals to track audio playback state and ensure one-time actions.
+################################################################################
+globals:
+  - id: boot_sound_played
+    type: bool
+    restore_value: no
+    initial_value: "false"
+    # Ensures startup sound plays only once after API connection
+
+################################################################################
+## Audio State Manager Event Handler
+##
+## Called from event_router when system events occur.
+## Manages sound playback and timing based on events.
+################################################################################
+
+script:
+  - id: audio_state_manager_handle_event
+    mode: queued
+    parameters:
+      event_type: string
+    then:
+      - logger.log:
+          format: "Audio Manager: Received event %s"
+          args: ["event_type.c_str()"]
+
+      # Wake word detected - play sound if enabled
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_va_detected}";'
+          then:
+            - logger.log: "Audio: Voice Assistant detected"
+            - if:
+                condition:
+                  switch.is_on: wake_sound
+                then:
+                  - logger.log: "Audio: Playing wake word sound"
+                  - script.execute:
+                      id: play_sound
+                      priority: true
+                      sound_file: !lambda return id(wake_word_triggered_sound);
+                  - delay: 300ms
+
+      # API connected
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_api_connected}";'
+          then:
+            - logger.log: "Audio: API connected - preparing startup sound"
+            - event.trigger:
+                id: system_event
+                event_type: "${evt_wake_word_stop_requested}"
+            - wait_until:
+                condition:
+                  - not:
+                      microphone.is_capturing
+                timeout: 3s
+            - delay: 200ms
+            - logger.log: "Audio: API connected - playing startup sound"
+            - if:
+                condition:
+                  and:
+                    - lambda: return !id(boot_sound_played);
+                    - switch.is_on: startup_sound_switch
+                then:
+                  - lambda: id(boot_sound_played) = true;
+                  - script.execute:
+                      id: play_sound
+                      priority: true
+                      sound_file: !lambda return id(ready_sound);
+                  - event.trigger:
+                      id: system_event
+                      event_type: "${evt_audio_ready}"
+                else:
+                  - logger.log: "Audio: API reconnected - skipping startup sound"
+                  - event.trigger:
+                      id: system_event
+                      event_type: "${evt_audio_ready}"
+      - logger.log:
+          format: "Audio Manager: Handled event %s"
+          args: ["event_type.c_str()"]

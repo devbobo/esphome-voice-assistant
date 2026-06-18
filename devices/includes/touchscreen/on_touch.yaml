@@ -1,0 +1,14 @@
+## Touchscreen On Touch Handler
+## Initializes gesture state variables when touch begins
+##
+## Requires globals from touchscreen_state_manager.yaml:
+##   - gs_touch_active, gs_start_x/y, gs_last_x/y, gs_start_ms
+
+then:
+  - lambda: |-
+      id(gs_touch_active) = true;
+      id(gs_start_x) = touch.x;
+      id(gs_start_y) = touch.y;
+      id(gs_last_x)  = touch.x;
+      id(gs_last_y)  = touch.y;
+      id(gs_start_ms) = millis();

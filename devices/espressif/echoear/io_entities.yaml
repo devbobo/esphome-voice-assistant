@@ -1,0 +1,100 @@
+## EchoEar I/O Entities Module
+## Logical abstractions for GPIO outputs, LED controls, and audio I/O
+## Wraps raw hardware interfaces (GPIO pins, I2S bus) into user-facing entities
+## This module sits between hardware.yaml (raw interfaces) and feature modules
+
+## ESP32 Capacitive Touch Sensor Configuration
+## Configures the ESP32's built-in capacitive touch sensing for GPIO6 (back) and GPIO7 (head)
+## Used by binary_sensor entities below
+esp32_touch:
+  setup_mode: false
+  measurement_duration: 0.25ms
+  sleep_duration: 0.5ms
+
+## Binary Sensors
+## Physical capacitive touch pad inputs for device control
+## Two touch pads positioned on back (GPIO6) and head (GPIO7) of device
+binary_sensor:
+  # Back touch pad (rear of device)
+  # Used for back navigation or manual control
+  - platform: esp32_touch
+    id: back_touch_pad
+    name: "${label_back_touch_pad}"
+    pin: GPIO6
+    threshold: 2000
+    filters:
+      - delayed_on: 15ms      # 15ms debounce on press
+      - delayed_off: 60ms     # 60ms debounce on release
+
+  # Head touch pad (top of device)
+  # Used for forward/menu or manual control
+  - platform: esp32_touch
+    id: head_touch_pad
+    name: "${label_head_touch_pad}"
+    pin: GPIO7
+    threshold: 2000
+    filters:
+      - delayed_on: 15ms      # 15ms debounce on press
+      - delayed_off: 60ms     # 60ms debounce on release
+
+## Light Entities
+## User-facing LED controls for Home Assistant automation
+light:
+  # Green status LED (binary on/off)
+  - platform: binary
+    id: green_led
+    name: "${label_green_led}"
+    icon: mdi:led-off
+    output: green_led_output
+
+  # Screen backlight (PWM brightness control)
+  - platform: monochromatic
+    id: backlight
+    name: "${label_screen_backlight}"
+    icon: mdi:television
+    entity_category: config
+    output: backlight_output
+    restore_mode: ALWAYS_ON
+    default_transition_length: 250ms
+
+## Audio Input (Microphone)
+## I2S audio input wrapped from raw i2s_audio_bus (defined in hardware.yaml)
+## Configuration: ES7210 external ADC, 16-bit 16kHz mono
+microphone:
+  - platform: i2s_audio
+    id: box_mic
+    i2s_audio_id: i2s_audio_bus
+    i2s_din_pin: GPIO3
+    adc_type: external
+    channel: left
+    pdm: false
+    sample_rate: 16000
+    bits_per_sample: 16bit
+
+## GPIO Output Abstractions
+## Low-level GPIO wrappers that serve as building blocks for higher-level entities
+output:
+  # Green status LED control (GPIO43)
+  - platform: gpio
+    pin: GPIO43
+    inverted: true
+    id: green_led_output
+
+  # Screen backlight PWM control (GPIO44)
+  - platform: ledc
+    id: backlight_output
+    pin: GPIO44
+    inverted: false
+
+## Audio Output (Speaker)
+## I2S audio output wrapped from raw i2s_audio_bus (defined in hardware.yaml)
+## Configuration: ES8311 external DAC, 48kHz mono
+speaker:
+  - platform: i2s_audio
+    id: box_speaker
+    i2s_audio_id: i2s_audio_bus
+    i2s_dout_pin: GPIO41
+    dac_type: external
+    audio_dac: es8311_dac
+    sample_rate: 48000
+    channel: mono

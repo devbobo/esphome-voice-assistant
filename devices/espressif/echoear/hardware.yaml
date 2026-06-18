@@ -1,0 +1,74 @@
+## EchoEar Hardware Configuration
+## Core ESP32-S3 setup, raw I/O buses, hardware codecs, and power management
+## This module defines only raw hardware interfaces and buses
+## GPIO abstractions and high-level I/O entities are in io_entities.yaml
+
+# Audio codec (microphone input)
+audio_adc:
+  - platform: es7210
+    i2c_id: bus_a
+    id: es7210_adc
+    bits_per_sample: 16bit
+    sample_rate: 16000
+
+# Audio codec (speaker output)
+audio_dac:
+  - platform: es8311
+    i2c_id: bus_a
+    id: es8311_dac
+    bits_per_sample: 16bit
+    sample_rate: 48000
+
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  cpu_frequency: 240MHz
+  framework:
+    type: esp-idf
+    advanced:
+      enable_idf_experimental_features: yes
+    sdkconfig_options:
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: "y"
+      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
+      # Forces the underlying ESP-IDF system to expect a 16MB physical block
+      CONFIG_ESPTOOLPY_FLASHSIZE_16MB: "y"
+      CONFIG_ESPTOOLPY_FLASHSIZE: "16MB"
+
+# I/O Buses and peripherals
+i2c:
+  - id: bus_a
+    scl: GPIO1
+    sda: GPIO2
+    frequency: 100kHz
+    scan: true
+
+i2s_audio:
+  - id: i2s_audio_bus
+    i2s_lrclk_pin: GPIO39
+    i2s_bclk_pin: GPIO40
+    i2s_mclk_pin: GPIO42
+
+# Power supply management
+power_supply:
+  - id: vcc3v3_sw
+    pin:
+      number: GPIO9
+      inverted: true
+    enable_time: 150ms
+    enable_on_boot: true
+
+  - id: codec_3v3
+    pin: GPIO48
+    enable_time: 150ms
+    enable_on_boot: true
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+spi:
+  id: display_qspi
+  type: quad
+  clk_pin: 18
+  data_pins: [46, 13, 11, 12]

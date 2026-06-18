@@ -1,0 +1,43 @@
+## EchoEar Touchscreen Module
+## CST816 resistive touchscreen driver with generic gesture detection
+## Handles CST816 display touch input via on_touch/on_update/on_release
+## on_release lambda delegates to includes/touchscreen/on_release.yaml (vendor-neutral gesture classifier)
+## Gesture state stored in globals, events defined in gesture.yaml, routing logic in script.yaml
+## Note: ESP32 capacitive touch pads (GPIO6/7) configured separately in io_entities.yaml
+
+## Display Configuration Variables
+## Substitutions allow display parameters to be easily adjusted across the entire configuration
+substitutions:
+  # Physical display dimensions (native resolution for JC3636W518V2: 360×360)
+  imagewidth:  "360"
+  imageheight: "360"
+  # Display rotation and gesture timing thresholds are defined at project level in base.yaml
+
+display:
+  - platform: mipi_spi
+    id: main_display
+    model: JC3636W518V2
+    cs_pin: 14
+    reset_pin: 4
+    rotation: ${rotate_display}
+    update_interval: never
+    dimensions:
+      height: ${imageheight}
+      width: ${imagewidth}
+
+# CST816 Touchscreen Driver
+touchscreen:
+  - platform: cst816
+    id: touch_screen
+    interrupt_pin: GPIO10
+    display: main_display
+    i2c_id: bus_a
+
+    on_touch:
+      !include ../../includes/touchscreen/on_touch.yaml
+
+    on_update:
+      !include ../../includes/touchscreen/on_update.yaml
+
+    on_release:
+      !include ../../includes/touchscreen/on_release.yaml

@@ -1,0 +1,15 @@
+## EchoEar Device Internationalisation (i18n)
+## Defines all user-facing entity names and labels specific to this device variant
+## Update these strings to localise the device interface for different languages
+## Generic labels (gestures, audio, battery, sensors, status) are defined in root i18n.yaml
+
+substitutions:
+  # Device identity (EchoEar-specific)
+  device_model: "EchoEar"
+
+  # Touch pads (EchoEar-specific)
+  label_back_touch_pad: "Back Touch Pad"
+  label_head_touch_pad: "Head Touch Pad"
+
+  # Lights / LEDs (EchoEar-specific)
+  label_green_led: "Green LED"

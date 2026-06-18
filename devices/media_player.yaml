@@ -1,0 +1,120 @@
+## EchoEar Media Player & Audio Configuration
+## Speaker, media player, announcement pipeline, and startup sound handling
+## Audio file URLs configured in sounds.yaml
+##
+## Publishes:
+##   - announcement_started: external HA announcement playback began
+##                           (playback-state semantic; triggers wake word stop)
+##   - media_player_idle:    announcement or sound finished playback
+##                           (triggers wake word re-arm if external)
+##
+## Note: Internal sounds (play_sound script) do NOT emit events to avoid
+##       event recursion. last_announcement_was_external tracks this.
+
+# Media player configuration
+globals:
+  - id: last_announcement_was_external
+    type: bool
+    restore_value: no
+    initial_value: "false"
+    # Tracks if last announcement was from HA (true) or internal sound (false)
+    # Prevents event recursion when internal sounds trigger on_announcement
+
+media_player:
+  - platform: speaker
+    volume_min: 0.5
+    volume_max: 0.7 # don't go higher than 0.8
+    name: None
+    id: external_media_player
+    announcement_pipeline:
+      speaker: box_speaker
+      format: FLAC
+      sample_rate: 48000
+      num_channels: 1
+    buffer_size: 250000
+
+    on_announcement:
+      # Determine if this announcement is from Home Assistant (external) or internal sound
+      # Only publish event for external announcements to avoid recursion
+      - lambda: |-
+          // Check if we're in a voice assistant session or if this is an external HA announcement
+          // If voice assistant is running, this is likely from HA response, so it's external
+          if (id(va).is_running()) {
+            id(last_announcement_was_external) = true;
+          } else {
+            // If not in voice session, this is likely from play_sound script (internal)
+            id(last_announcement_was_external) = false;
+          }
+      # Publish announcement_started ONLY for external announcements from Home Assistant
+      - if:
+          condition:
+            lambda: return id(last_announcement_was_external);
+          then:
+            - event.trigger:
+                id: system_event
+                event_type: ${evt_announcement_started}
+      # If using HA wake word, wait for voice session to complete
+      - if:
+          condition:
+            - lambda: return id(wake_word_engine_location).current_option() == "${wake_word_location_ha}";
+          then:
+            - wait_until:
+                condition:
+                  - not:
+                      voice_assistant.is_running:
+    on_idle:
+      # Media player finished - broadcast idle event ONLY if it was an external announcement
+      # Skip for internal sounds to avoid triggering state managers during startup sound, etc.
+      - if:
+          condition:
+            lambda: return id(last_announcement_was_external);
+          then:
+            - event.trigger:
+                id: system_event
+                event_type: ${evt_media_player_idle}
+
+    files: !include includes/sounds.yaml
+
+## Audio Script
+## Handles sound file playback with priority queueing
+## Publishes internal_sound_started/ended events
+script:
+  - id: play_sound
+    parameters:
+      priority: bool
+      sound_file: "audio::AudioFile*"
+    then:
+      - lambda: |-
+          if (priority) {
+            id(external_media_player)
+              ->make_call()
+              .set_command(media_player::MediaPlayerCommand::MEDIA_PLAYER_COMMAND_STOP)
+              .set_announcement(true)
+              .perform();
+          }
+          if ((id(external_media_player).state != media_player::MediaPlayerState::MEDIA_PLAYER_STATE_ANNOUNCING) || priority) {
+            id(external_media_player)->play_file(sound_file, true, false);
+          }
+      - wait_until:
+          condition:
+            not:
+              speaker.is_playing:
+                id: box_speaker
+          timeout: 30s
+      - delay: 300ms
+
+## Audio Control Switches
+switch:
+  - platform: gpio
+    name: ${label_speaker}
+    icon: "mdi:speaker"
+    pin: GPIO15
+    restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: template
+    id: startup_sound_switch
+    name: Startup Sound
+    icon: mdi:card-text-outline
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON

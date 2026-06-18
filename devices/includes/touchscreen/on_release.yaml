@@ -1,0 +1,116 @@
+## Gesture Detection Lambda (Vendor-Neutral)
+## Generic touch-to-gesture classifier for any touchscreen driver
+##
+## Requires globals from touchscreen_state_manager.yaml:
+##   - gs_touch_active, gs_start_x/y, gs_last_x/y, gs_start_ms
+##   - last_tap_time, tap_count
+##   - screen_gestures (master switch)
+##
+## Requires substitutions from base.yaml:
+##   - rotate_display (0/90/180/270)
+##   - long_press_duration (ms)
+##   - double_press_window (ms)
+##
+## Requires substitutions from i18n.yaml:
+##   - touchscreen_swipe_left, touchscreen_swipe_right, touchscreen_swipe_up, touchscreen_swipe_down
+##   - touchscreen_long_press, touchscreen_double_press, touchscreen_single_press
+##
+## Requires entities:
+##   - id(touchscreen_event) - template event to trigger with touchscreen event
+##   - id(main_display) - display with get_width() and get_height()
+
+then:
+  - lambda: |-
+      if (!id(gs_touch_active)) return;
+      // Master gesture control: skip processing if touchscreen events are disabled
+      if (!id(screen_gestures).state) {
+        id(gs_touch_active) = false;
+        return;
+      }
+      id(gs_touch_active) = false;
+
+      const int start_x = id(gs_start_x);
+      const int start_y = id(gs_start_y);
+      const int end_x   = id(gs_last_x);
+      const int end_y   = id(gs_last_y);
+      const int dx = end_x - start_x;
+      const int dy = end_y - start_y;
+      const uint32_t dt = millis() - id(gs_start_ms);
+
+      // Scale thresholds with screen
+      const int w = id(main_display).get_width();
+      const int h = id(main_display).get_height();
+      const int min_dim = (w < h) ? w : h;
+
+      // Swipe thresholds
+      const int MIN_DIST = std::max(16, min_dim / 8);
+      const uint32_t MAX_TIME = 1500;
+
+      // Tap guard (strict)
+      const int TAP_MAX_DIST  = std::max(8,  min_dim / 20);
+      const uint32_t TAP_MAX_TIME = 300;
+
+      // Tap fallback (more forgiving)
+      const int TAP_FB_DIST  = std::max(14, min_dim / 12);
+      const uint32_t TAP_FB_TIME = 700;
+
+      // Normalize for display rotation
+      const int ROT = ${rotate_display};
+      int ndx = dx, ndy = dy;
+      switch (ROT) {
+        case 0:   break;
+        case 90:  ndx =  dy;  ndy = -dx; break;
+        case 180: ndx = -dx;  ndy = -dy; break;
+        case 270: ndx = -dy;  ndy =  dx; break;
+        default: break;
+      }
+
+      const int absx = std::abs(ndx);
+      const int absy = std::abs(ndy);
+
+      bool is_left=false, is_right=false, is_up=false, is_down=false;
+
+      // Swipe?
+      if (dt <= MAX_TIME && (absx >= MIN_DIST || absy >= MIN_DIST)) {
+        if (absx >= absy) {
+          if (ndx < 0) is_left = true; else is_right = true;
+        } else {
+          if (ndy < 0) is_up = true; else is_down = true;
+        }
+      }
+
+      // Classify taps (if not a swipe)
+      if (!is_left && !is_right && !is_up && !is_down) {
+        // Not a swipe → check for long press, double tap, or single tap
+        const int LONG_PRESS_TIME = ${long_press_duration};  // Configurable threshold from substitutions
+        const int DOUBLE_TAP_WINDOW = ${double_press_window};  // Configurable window from substitutions
+
+        uint32_t now = millis();
+        uint32_t time_since_last_tap = now - id(last_tap_time);
+
+        // Long press detection
+        if (dt >= LONG_PRESS_TIME && absx <= TAP_FB_DIST && absy <= TAP_FB_DIST) {
+          id(touchscreen_event).trigger("${touchscreen_long_press}");
+          id(tap_count) = 0;
+          id(last_tap_time) = now;
+        }
+        // Double tap detection
+        else if (time_since_last_tap < DOUBLE_TAP_WINDOW && id(tap_count) == 1) {
+          id(touchscreen_event).trigger("${touchscreen_double_press}");
+          id(tap_count) = 0;
+          id(last_tap_time) = 0;
+        }
+        // Single tap (may be first of double tap)
+        else if ((absx <= TAP_MAX_DIST && absy <= TAP_MAX_DIST && dt <= TAP_MAX_TIME) ||
+                 (absx <= TAP_FB_DIST && absy <= TAP_FB_DIST && dt <= TAP_FB_TIME)) {
+          id(touchscreen_event).trigger("${touchscreen_single_press}");
+          id(tap_count) = 1;
+          id(last_tap_time) = now;
+        }
+      }
+
+      // Trigger swipe touchscreen events
+      if (is_left)  id(touchscreen_event).trigger("${touchscreen_swipe_left}");
+      else if (is_right) id(touchscreen_event).trigger("${touchscreen_swipe_right}");
+      else if (is_up)    id(touchscreen_event).trigger("${touchscreen_swipe_up}");
+      else if (is_down)  id(touchscreen_event).trigger("${touchscreen_swipe_down}");

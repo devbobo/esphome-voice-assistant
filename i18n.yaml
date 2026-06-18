@@ -1,0 +1,43 @@
+## Touchscreen event Type Internationalisation (i18n)
+## Defines all touchscreen event names for easy translation into different languages
+## Update the string values here to localise gesture labels across the entire configuration
+substitutions:
+  # Audio
+  label_microphone: "Microphone"
+  label_speaker: "Speaker"
+
+  # Battery
+  label_battery_voltage: "Battery Voltage"
+  label_battery_percentage: "Battery Percentage"
+  label_battery_status: "Battery"
+
+  # Device
+  device_description: "Voice Assistant Device"
+
+  # Display
+  label_screen_backlight: "Screen"
+  label_screen_brightness: "Brightness"
+
+  # Sensors
+  label_temperature: "Temperature"
+
+  # Status
+  status_charging: "Charging"
+  status_discharging: "Discharging"
+  status_full: "Full"
+  status_empty: "Empty"
+
+  # Swipe gestures
+  touchscreen_swipe_left: "Swipe Left"
+  touchscreen_swipe_right: "Swipe Right"
+  touchscreen_swipe_up: "Swipe Up"
+  touchscreen_swipe_down: "Swipe Down"
+
+  # Tap gestures
+  touchscreen_single_press: "Single Press"
+  touchscreen_long_press: "Long Press"
+  touchscreen_double_press: "Double Press"
+
+  # Wake Word
+  wake_word_location_ha: "In Home Assistant"
+  wake_word_location_device: "On device"

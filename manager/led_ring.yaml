@@ -1,0 +1,148 @@
+################################################################################
+## LED Ring State Manager
+##
+## Listens to system_event and makes LED ring state decisions independently.
+## Converts system events into LED ring state changes.
+##
+## Integration:
+##   - Listens to: system_event (wake_word_detected, mic_muted/unmuted, voice_assist_idle, announcements, api_connected)
+##   - Outputs: LED events via led_event platform
+##   - Implementation: Device-specific handlers consume led_event
+##
+## LED Ring States:
+##   - idle: Device ready but not listening
+##   - listening: Wake word detected, awaiting voice input
+##   - muted: Microphone disabled (solid red)
+##   - processing: Voice command recognized
+##   - error: System error or communication issue
+##
+################################################################################
+
+substitutions:
+  # LED Event Types (published by this manager)
+  led_event_listening: "listening"
+  led_event_muted: "muted"
+  led_event_processing: "processing"
+  led_event_idle: "idle"
+  led_event_error: "error"
+
+## LED State Tracking
+globals:
+  - id: led_listening_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+    # Track whether listening mode is active (used to resume listening after announcements)
+
+script:
+  - id: led_state_manager_handle_event
+    parameters:
+      event_type: string
+    then:
+      - logger.log:
+          format: "LED Manager: Received event %s"
+          args: ["event_type.c_str()"]
+
+      # Wake word detected - entering listening mode
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_va_detected}";'
+          then:
+            - logger.log: "LED: Wake word detected - entering listening"
+            - lambda: id(led_listening_active) = true;
+            - event.trigger:
+                id: led_event
+                event_type: "${led_event_listening}"
+
+      # Microphone muted
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_mic_muted}";'
+          then:
+            - logger.log: "LED: Microphone muted"
+            - lambda: id(led_listening_active) = false;
+            - event.trigger:
+                id: led_event
+                event_type: "${led_event_muted}"
+
+      # Microphone unmuted
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_mic_unmuted}";'
+          then:
+            - logger.log: "LED: Microphone unmuted"
+            - if:
+                condition:
+                  lambda: 'return id(led_listening_active);'
+                then:
+                  - logger.log: "LED: Resuming listening mode"
+                  - event.trigger:
+                      id: led_event
+                      event_type: "${led_event_listening}"
+                else:
+                  - logger.log: "LED: Entering idle mode"
+                  - event.trigger:
+                      id: led_event
+                      event_type: "${led_event_idle}"
+
+      # Voice complete
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_va_idle}";'
+          then:
+            - logger.log: "LED: Voice complete"
+            - if:
+                condition:
+                  lambda: 'return id(led_listening_active);'
+                then:
+                  - logger.log: "LED: Returning to listening"
+                  - event.trigger:
+                      id: led_event
+                      event_type: "${led_event_listening}"
+                else:
+                  - logger.log: "LED: Returning to idle"
+                  - event.trigger:
+                      id: led_event
+                      event_type: "${led_event_idle}"
+
+
+      # API connected
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_api_connected}";'
+          then:
+            - logger.log: "LED: API connected - entering idle"
+            - lambda: id(led_listening_active) = false;
+            - event.trigger:
+                id: led_event
+                event_type: "${led_event_idle}"
+
+
+## LED Event Platform
+##
+## Output events for LED ring control by device-specific handlers.
+## This platform fires the LED state decisions made by the manager above.
+##
+event:
+  - platform: template
+    id: led_event
+    name: "LED Ring Event"
+    icon: "mdi:led-on"
+    event_types:
+      - ${led_event_listening}
+      - ${led_event_muted}
+      - ${led_event_processing}
+      - ${led_event_idle}
+      - ${led_event_error}
+
+## LED Ring Master Control
+##
+## Global toggle to enable/disable LED feedback.
+##
+switch:
+  - platform: template
+    id: led_ring_enabled
+    name: "LED Ring"
+    icon: "mdi:led-on"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON

@@ -1,0 +1,141 @@
+## Gesture State Manager
+## Central gesture system: state tracking, event definitions, master control, and event routing
+## Manages all gesture lifecycle: detection → event → handler dispatch
+## Architecture: CST816 detects gestures → touchscreen_event fires → handle_touchscreen_event routes to handlers
+
+## Gesture State Globals
+## Tracks touch state and gesture timing across multiple lambda executions
+## These are used by the CST816 on_touch/on_update/on_release lambdas in touchscreen.yaml
+globals:
+  - id: gs_touch_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+    # Current touch state: true = finger on screen, false = released/idle
+
+  - id: gs_start_x
+    type: int
+    restore_value: no
+    initial_value: "0"
+    # X coordinate where touch began (for swipe/tap detection)
+
+  - id: gs_start_y
+    type: int
+    restore_value: no
+    initial_value: "0"
+    # Y coordinate where touch began (for swipe/tap detection)
+
+  - id: gs_last_x
+    type: int
+    restore_value: no
+    initial_value: "0"
+    # Most recent X coordinate during touch (for swipe distance calculation)
+
+  - id: gs_last_y
+    type: int
+    restore_value: no
+    initial_value: "0"
+    # Most recent Y coordinate during touch (for swipe distance calculation)
+
+  - id: gs_start_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+    # Timestamp when touch began (milliseconds, for duration calculation)
+
+  - id: last_tap_time
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+    # Timestamp of previous tap (for double-tap window detection)
+
+  - id: tap_count
+    type: int
+    restore_value: no
+    initial_value: "0"
+    # Counter for multi-tap sequences: 0=idle, 1=first tap, 2=double tap
+
+## Touchscreen event Definition
+## Template event that routes detected gestures to the handler script
+## Event types: All 7 gesture types exposed to Home Assistant for automation and logging
+event:
+  - platform: template
+    id: touchscreen_event
+    name: "Touchscreen"
+    icon: "mdi:gesture-tap-button"
+    # Event types exposed to Home Assistant for automation
+    # Gesture names defined in i18n.yaml for localization support
+    event_types:
+      - ${touchscreen_swipe_left}
+      - ${touchscreen_swipe_right}
+      - ${touchscreen_swipe_up}
+      - ${touchscreen_swipe_down}
+      - ${touchscreen_single_press}
+      - ${touchscreen_long_press}
+      - ${touchscreen_double_press}
+    # Router: when event fires, execute handler script with touchscreen_type parameter
+    on_event:
+      then:
+        - script.execute:
+            id: handle_touchscreen_event
+            touchscreen_event: !lambda 'return event_type;'
+
+## Gesture Master Control
+## Toggle to enable/disable gesture processing globally
+## When disabled, CST816 still detects physical touches but touchscreen events are NOT fired
+## This is checked in the touchscreen.yaml on_release lambda before any event is triggered
+switch:
+  - platform: template
+    id: screen_gestures
+    name: "Touchscreen"
+    icon: "mdi:gesture-tap-button"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    # Master control: when enabled, touch release will analyze and fire touchscreen events
+    # When disabled, touch is detected but processed without firing events (useful for boot, updates, or UI modes that shouldn't respond to gestures)
+
+## Touchscreen event Handler Script
+## Centralized event router that processes all touch gestures
+## Maps gesture types to display logic and user actions
+## Gesture types: Swipe Left/Right/Up/Down, Single/Long/Double Press
+script:
+  - id: handle_touchscreen_event
+    parameters:
+      touchscreen_event: string
+    then:
+      - if:
+          condition:
+            lambda: 'return touchscreen_event == "${touchscreen_swipe_left}";'
+          then:
+            - logger.log: "Touchscreen event: ${touchscreen_swipe_left}"
+            # Add your display logic for swipe left here
+      - if:
+          condition:
+            lambda: 'return touchscreen_event == "${touchscreen_swipe_right}";'
+          then:
+            - logger.log: "Touchscreen event: ${touchscreen_swipe_right}"
+            # Add your display logic for swipe right here
+      - if:
+          condition:
+            lambda: 'return touchscreen_event == "${touchscreen_swipe_up}";'
+          then:
+            - logger.log: "Touchscreen event: ${touchscreen_swipe_up}"
+            # Add your display logic for swipe up here
+      - if:
+          condition:
+            lambda: 'return touchscreen_event == "${touchscreen_swipe_down}";'
+          then:
+            - logger.log: "Touchscreen event: ${touchscreen_swipe_down}"
+            # Add your display logic for swipe down here
+      - if:
+          condition:
+            lambda: 'return touchscreen_event == "${touchscreen_long_press}";'
+          then:
+            - logger.log: "Touchscreen event: ${touchscreen_long_press}"
+            # Add your display logic for long press here
+      - if:
+          condition:
+            lambda: 'return touchscreen_event == "${touchscreen_double_press}";'
+          then:
+            - logger.log: "Touchscreen event: ${touchscreen_double_press}"
+            # Add your display logic for double tap here

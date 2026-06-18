@@ -1,0 +1,184 @@
+################################################################################
+## System Event Bus
+##
+## Central event platform that broadcasts all system events.
+## All state managers subscribe to system_event and filter by event_type.
+##
+## Single Event Bus Pattern:
+##   - voice_assistant.yaml publishes events to system_event
+##   - media_player.yaml publishes events to system_event
+##   - va_microphone switch publishes mic_muted/unmuted to system_event
+##   - All state managers (voice, audio, led_ring, touchscreen) listen
+##     to system_event and filter by event_type
+##
+## Routing Strategy:
+##   - API state globals updated first (before routing to managers)
+##   - Stop-related events routed to Voice State Manager directly
+##   - Audio events routed to Audio State Manager (waits for mic idle)
+##   - Start-related events routed to Voice State Manager after audio
+##
+## Event Types:
+##   - api_connected:            Connected to Home Assistant
+##   - api_disconnected:         Disconnected from Home Assistant
+##   - announcement_started:     External HA announcement began (playback semantic)
+##   - media_player_idle:        Media player finished playback
+##   - mic_muted:                Microphone switch toggled off (capture stopped)
+##   - mic_unmuted:              Microphone switch toggled on
+##   - audio_ready:              Startup sound flow completed; safe to re-arm wake word
+##   - voice_assist_idle:        Voice assistant session ended (on_end fired)
+##   - voice_assist_detected:    Wake word detected by micro_wake_word
+##   - voice_assist_listening:   Voice assistant is listening for speech
+##   - voice_assist_thinking:    Speech detected, processing STT
+##   - voice_assist_replying:    TTS started (HA generating reply)
+##   - voice_assist_error:       Voice assistant encountered an error
+##   - wake_word_stop_requested: Any component requesting wake word to stop
+##   - wake_word_location_changed: Wake word engine (device/HA) changed
+##
+## Usage Examples:
+##   Publish from voice_assistant.yaml:
+##     - event.trigger:
+##         id: system_event
+##         event_type: ${evt_va_idle}
+##
+##   Request wake word stop from any component:
+##     - event.trigger:
+##         id: system_event
+##         event_type: ${evt_wake_word_stop_requested}
+##
+##   React in a state manager:
+##     - if:
+##         condition:
+##           lambda: 'return event_type == "${evt_va_idle}";'
+##         then: ...
+################################################################################
+
+substitutions:
+  # System event type constants
+  evt_api_connected:              "api_connected"
+  evt_api_disconnected:           "api_disconnected"
+  evt_announcement_started:       "announcement_started"
+  evt_media_player_idle:          "media_player_idle"
+  evt_mic_muted:                  "mic_muted"
+  evt_mic_unmuted:                "mic_unmuted"
+  evt_audio_ready:                "audio_ready"
+  evt_va_idle:                    "voice_assist_idle"
+  evt_va_detected:                "voice_assist_detected"
+  evt_va_listening:               "voice_assist_listening"
+  evt_va_thinking:                "voice_assist_thinking"
+  evt_va_replying:                "voice_assist_replying"
+  evt_va_error:                   "voice_assist_error"
+  evt_wake_word_stop_requested:   "wake_word_stop_requested"
+  evt_wake_word_location_changed: "wake_word_location_changed"
+
+globals:
+  - id: api_client_connected
+    type: bool
+    restore_value: no
+    initial_value: "false"
+    # Tracks whether at least one Home Assistant API client is connected
+
+api:
+  on_client_connected:
+    - logger.log: "Connected to Home Assistant"
+    - event.trigger:
+        id: system_event
+        event_type: "${evt_api_connected}"
+  on_client_disconnected:
+    - logger.log: "Disconnected from Home Assistant"
+    - event.trigger:
+        id: system_event
+        event_type: "${evt_api_disconnected}"
+
+event:
+  - platform: template
+    id: system_event
+    event_types:
+      - ${evt_api_connected}
+      - ${evt_api_disconnected}
+      - ${evt_announcement_started}
+      - ${evt_media_player_idle}
+      - ${evt_mic_muted}
+      - ${evt_mic_unmuted}
+      - ${evt_audio_ready}
+      - ${evt_va_idle}
+      - ${evt_va_detected}
+      - ${evt_va_listening}
+      - ${evt_va_thinking}
+      - ${evt_va_replying}
+      - ${evt_va_error}
+      - ${evt_wake_word_stop_requested}
+      - ${evt_wake_word_location_changed}
+    on_event:
+      - logger.log:
+          format: "System Event: %s"
+          args: ["event_type.c_str()"]
+
+      # Track API client connection state centrally
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_api_connected}";'
+          then:
+            - lambda: id(api_client_connected) = true;
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_api_disconnected}";'
+          then:
+            - lambda: id(api_client_connected) = false;
+
+      # Voice State Manager stop-related events
+      - if:
+          condition:
+            lambda: >-
+              return std::set<std::string>{
+                "${evt_api_disconnected}",
+                "${evt_announcement_started}",
+                "${evt_mic_muted}",
+                "${evt_wake_word_stop_requested}",
+              }.count(event_type) > 0;
+          then:
+            - script.execute:
+                id: voice_state_manager_handle_event
+                event_type: !lambda return event_type;
+
+      # Audio State Manager - handles audio coordination
+      - if:
+          condition:
+            lambda: >-
+              return std::set<std::string>{
+                "${evt_api_connected}",
+                "${evt_va_detected}"
+              }.count(event_type) > 0;
+          then:
+            - if:
+                condition:
+                  - microphone.is_capturing
+                then:
+                  - wait_until:
+                      condition:
+                        - not:
+                            microphone.is_capturing
+                  - delay: 1500ms
+            - script.execute:
+                id: audio_state_manager_handle_event
+                event_type: !lambda return event_type;
+
+      - if:
+          condition:
+            lambda: >-
+              return std::set<std::string>{
+                "${evt_media_player_idle}",
+                "${evt_mic_unmuted}",
+                "${evt_audio_ready}",
+                "${evt_va_idle}",
+                "${evt_va_detected}",
+              }.count(event_type) > 0;
+          then:
+            - script.execute:
+                id: voice_state_manager_handle_event
+                event_type: !lambda return event_type;
+
+packages:
+  audio_manager: !include manager/audio.yaml
+  voice_manager: !include manager/voice.yaml
+  led_ring_manager: !include manager/led_ring.yaml
+  touchscreen_manager: !include manager/touchscreen.yaml

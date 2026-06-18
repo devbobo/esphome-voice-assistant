@@ -1,0 +1,4 @@
+# Resume wake word when speaker finishes (regardless of voice assistant state)
+- script.execute:
+    id: handle_audio_event
+    event_type: "${audio_event_announcement_ended}"

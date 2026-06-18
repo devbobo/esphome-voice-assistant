@@ -1,0 +1,21 @@
+# Stop wake word during announcement, and wait for HA voice session to complete
+- if:
+    condition:
+      - microphone.is_capturing:
+    then:
+      - script.execute:
+          id: handle_audio_event
+          event_type: "${audio_event_announcement_started}"
+      - if:
+          condition:
+            - lambda: return id(wake_word_engine_location).current_option() == "${wake_word_location_ha}";
+          then:
+            - wait_until:
+                condition:
+                  - not:
+                      voice_assistant.is_running:
+- if:
+    condition:
+      lambda: 'return id(playing_internal_sound);'
+    then:
+      - lambda: 'id(playing_internal_sound) = false;'

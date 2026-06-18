@@ -1,0 +1,253 @@
+################################################################################
+## Voice State Manager
+##
+## Single owner of wake word lifecycle. All start/stop decisions and
+## I2S microphone capture go through this manager exclusively.
+##
+## Architecture:
+##   - Subscribes to: system_event via event_router routing
+##   - Stop triggers:
+##       api_disconnected, announcement_started, mic_muted,
+##       wake_word_stop_requested
+##   - Start triggers:
+##       audio_ready, media_player_idle, mic_unmuted, va_idle
+##   - Direct starts:
+##       va_detected (calls voice_assistant.start with detected wake word)
+##       wake_word_location_changed (switches device/HA mode)
+##   - Executes:
+##       micro_wake_word.start/stop,
+##       voice_assistant.start/stop/start_continuous,
+##       switch.turn_on: va_microphone (owned by start_wake_word)
+##   - Owns: All wake word state and start/stop conditions
+##
+## Gate Conditions (evaluate_wake_word_state):
+##   1. va_microphone switch must be ON
+##   2. Voice assistant must not be running
+##   3. API client must be connected
+##
+## Separation of Concerns:
+##   - Voice State Manager: sole executor of wake word start/stop.
+##   - Audio State Manager: manages sound playback only.
+##   - Event Router: routes events; never executes wake word actions.
+##   - voice_assistant.yaml: publishes lifecycle events only.
+################################################################################
+
+globals:
+  - id: wake_word_should_be_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+    # Tracks whether wake word should be running based on all conditions
+  - id: last_detected_wake_word
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+    # Last wake word captured by micro_wake_word.on_wake_word_detected
+
+script:
+  ################################################################################
+  ## Evaluate Wake Word State
+  ##
+  ## Determines whether the wake word should be active based on:
+  ##   1. Microphone enabled (va_microphone switch ON)
+  ##   2. No announcement is playing
+  ##   3. No voice assistant session is active
+  ##   4. Connected to Home Assistant when using HA wake word mode
+  ##
+  ## This is the single source of truth for whether the wake word
+  ## should run.
+  ################################################################################
+  - id: evaluate_wake_word_state
+    then:
+      - lambda: |-
+          bool should_run = true;
+          
+          // Check: microphone must be enabled
+          if (!id(va_microphone).state) {
+            should_run = false;
+          }
+          
+          // Check: voice assistant not running
+          if (id(va).is_running()) {
+            should_run = false;
+          }
+
+          // Check: API client connected
+          if (!id(api_client_connected)) {
+            should_run = false;
+          }
+          
+          id(wake_word_should_be_active) = should_run;
+
+  ################################################################################
+  ## Start Wake Word
+  ##
+  ## Activates the wake word in the appropriate mode (device or HA).
+  ## Only runs if `evaluate_wake_word_state` allows it.
+  ################################################################################
+  - id: start_wake_word
+    then:
+      - script.execute: evaluate_wake_word_state
+      - if:
+          condition:
+            lambda: return id(wake_word_should_be_active);
+          then:
+            # Ensure speaker/announcement playback is idle before arming wake word.
+            - wait_until:
+                condition:
+                  - and:
+                      - not:
+                          media_player.is_announcing:
+                      - not:
+                          speaker.is_playing:
+                            id: box_speaker
+            - switch.turn_on: va_microphone
+            - if:
+                condition:
+                  lambda: >-
+                    return id(wake_word_engine_location).current_option()
+                      == "${wake_word_location_device}";
+                then:
+                  - logger.log: "Voice: Starting device wake word"
+                  - lambda: id(va).set_use_wake_word(false);
+                  - voice_assistant.stop:
+                  - micro_wake_word.start:
+            - if:
+                condition:
+                  lambda: >-
+                    return id(wake_word_engine_location).current_option()
+                      == "${wake_word_location_ha}";
+                then:
+                  - logger.log: "Voice: Starting HA wake word"
+                  - lambda: id(va).set_use_wake_word(true);
+                  - voice_assistant.start_continuous:
+
+  ################################################################################
+  ## Stop Wake Word
+  ##
+  ## Deactivates the wake word in both modes (device and HA).
+  ################################################################################
+  - id: stop_wake_word
+    then:
+      - logger.log: "Voice: Stopping wake word"
+      - script.stop: start_wake_word
+      - if:
+          condition:
+            lambda: >-
+              return id(wake_word_engine_location).current_option()
+                == "${wake_word_location_ha}";
+          then:
+            - lambda: id(va).set_use_wake_word(false);
+            - voice_assistant.stop:
+      - if:
+          condition:
+            lambda: >-
+              return id(wake_word_engine_location).current_option()
+                == "${wake_word_location_device}";
+          then:
+            - micro_wake_word.stop:
+            # - microphone.stop_capture:
+            - delay: 100ms
+
+  ################################################################################
+  ## Voice State Manager Event Handler
+  ##
+  ## Called from event_router when system events occur.
+  ## Makes decisions to start or stop the wake word based on events.
+  ################################################################################
+  - id: voice_state_manager_handle_event
+    mode: queued
+    parameters:
+      event_type: string
+    then:
+      - logger.log:
+          format: "Voice Manager: Received event %s"
+          args: ["event_type.c_str()"]
+
+      - if:
+          condition:
+            lambda: >-
+              return std::set<std::string>{
+                "${evt_va_detected}",
+              }.count(event_type) > 0;
+          then:
+            - voice_assistant.start:
+                wake_word: !lambda return id(last_detected_wake_word);
+
+      # Voice assistant finished - handle audio waiting and wake word restart based on mode
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_va_idle}";'
+          then:
+            # Wait for announcement to start (with timeout in case no TTS response)
+            - wait_until:
+                condition:
+                  media_player.is_announcing:
+                timeout: 0.5s
+            - logger.log: "Voice: Session ended, re-evaluating wake word"
+            - script.execute: start_wake_word
+      
+      # Audio ready - start wake word after startup sound flow is complete
+      - if:
+          condition:
+            lambda: >-
+              return std::set<std::string>{
+                "${evt_audio_ready}",
+                "${evt_media_player_idle}",
+                "${evt_mic_unmuted}"
+              }.count(event_type) > 0;
+          then:
+            - if:
+                condition:
+                  - speaker.is_playing
+                then:
+                  - wait_until:
+                      condition:
+                        - not:
+                            speaker.is_playing
+                  - delay: 1500ms
+            - logger.log: "Voice: Starting wake word"
+            - script.execute: start_wake_word
+
+      # Voice assistant listening / mic muted / api disconnected - stop wake word
+      - if:
+          condition:
+            lambda: >-
+              return std::set<std::string>{
+                "${evt_api_disconnected}",
+                "${evt_announcement_started}",
+                "${evt_mic_muted}",
+                "${evt_wake_word_stop_requested}",
+              }.count(event_type) > 0;
+          then:
+            - logger.log: "Voice: Stopping wake word"
+            - script.execute: stop_wake_word
+
+      # Wake word location changed - switch modes
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_wake_word_location_changed}";'
+          then:
+            - logger.log: "Voice: Wake word location changed"
+            - if:
+                condition:
+                  lambda: >-
+                    return id(wake_word_engine_location).current_option()
+                      == "${wake_word_location_ha}";
+                then:
+                  - logger.log: "Voice: Switching to HA wake word mode"
+                  - micro_wake_word.stop:
+                  - delay: 500ms
+                  - lambda: id(va).set_use_wake_word(true);
+                  - voice_assistant.start_continuous:
+            - if:
+                condition:
+                  lambda: >-
+                    return id(wake_word_engine_location).current_option()
+                      == "${wake_word_location_device}";
+                then:
+                  - logger.log: "Voice: Switching to device wake word mode"
+                  - lambda: id(va).set_use_wake_word(false);
+                  - voice_assistant.stop:
+                  - delay: 500ms
+                  - micro_wake_word.start:
