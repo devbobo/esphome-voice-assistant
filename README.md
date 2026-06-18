@@ -103,7 +103,7 @@ base.yaml
     ├─→ event_router.yaml (event platform, state manager routing)
     ├─→ i18n.yaml (translatable strings)
     │
-    ├─→ manager/
+    ├─→ managers/
     │   ├─→ audio.yaml (audio state and coordination)
     │   ├─→ voice.yaml (wake word lifecycle)
     │   ├─→ led_ring.yaml (LED ring feedback)
@@ -132,10 +132,10 @@ base.yaml
 - **config.yaml**: Global substitutions and configuration (sound URLs, device path, event type constants, etc.)
 - **event_router.yaml**: Central event platform definition and routing to state managers
 - **i18n.yaml**: Translatable strings (gesture names, entity labels, voice settings, status messages)
-- **manager/audio.yaml**: Central audio event dispatcher, microphone/speaker state coordination
-- **manager/voice.yaml**: Wake word lifecycle management and control
-- **manager/led_ring.yaml**: LED ring state feedback
-- **manager/touchscreen.yaml**: Gesture state tracking, event definitions, master control, and event routing
+- **managers/audio.yaml**: Central audio event dispatcher, microphone/speaker state coordination
+- **managers/voice.yaml**: Wake word lifecycle management and control
+- **managers/led_ring.yaml**: LED ring state feedback
+- **managers/touchscreen.yaml**: Gesture state tracking, event definitions, master control, and event routing
 - **hardware.yaml**: Raw I/O buses only (I2C, I2S, SPI, codecs)
 - **io_entities.yaml**: GPIO/audio abstractions (microphone, speaker, not hardware configuration)
 - **battery.yaml**: Sensor polling and calibration (self-contained)
@@ -170,7 +170,7 @@ The framework provides an event-driven gesture detection system with **vendor-ne
 
 - **Event-Driven Architecture**: Gesture detection triggers events routed to display handlers
 - **Shared Gesture Logic**: Three vendor-neutral handlers (`devices/includes/touchscreen_on_touch.yaml`, `devices/includes/touchscreen_on_update.yaml`, `devices/includes/touchscreen_on_release.yaml`) provide reusable, hardware-agnostic gesture detection
-- **Shared Event Routing**: `manager/touchscreen.yaml` handles all touchscreen events and state
+- **Shared Event Routing**: `managers/touchscreen.yaml` handles all touchscreen events and state
 - **Device-Specific Drivers**: Each device's `touchscreen.yaml` handles hardware driver + simple touch callback wiring
 
 ### Gesture Detection Design
@@ -182,7 +182,7 @@ The framework provides an event-driven gesture detection system with **vendor-ne
 - `on_release` classifies touch coordinates and timing into 7 gesture types
 - Works with **any touchscreen driver** that provides `touch.x`, `touch.y`, and duration
 - Parameterized via substitutions (rotation, thresholds, event names)
-- Outputs touchscreen events that are routed by `manager/touchscreen.yaml` event dispatcher
+- Outputs touchscreen events that are routed by `managers/touchscreen.yaml` event dispatcher
 
 **Device integration** (e.g., `devices/espressif/echoear/touchscreen.yaml`):
 
@@ -201,7 +201,7 @@ touchscreen:
 
 This design means **new touchscreen devices only need to**:
 1. Wire `on_touch`, `on_update`, `on_release` to populate global state
-2. Ensure `manager/touchscreen.yaml` handles all touchscreen events and state (shared across devices)
+2. Ensure `managers/touchscreen.yaml` handles all touchscreen events and state (shared across devices)
 
 ### Gesture Types
 
@@ -271,7 +271,7 @@ api component                 ──publishes events──→  system_event
                                                            │
                          ┌─────────────────────────────────┤
                          ↓                                 ↓
-               manager/audio.yaml              manager/voice.yaml
+               managers/audio.yaml              managers/voice.yaml
              (sound playback only)        (wake word lifecycle owner)
 ```
 
@@ -299,13 +299,13 @@ api component                 ──publishes events──→  system_event
 
 ### Manager Responsibilities
 
-**`manager/voice.yaml`** — sole owner of wake word lifecycle:
+**`managers/voice.yaml`** — sole owner of wake word lifecycle:
 - Decides when to start/stop `micro_wake_word` and `voice_assistant`
 - Gate conditions: mic switch ON + API connected + VA not running
 - Starts `va_microphone_switch` as part of `start_wake_word`
 - Responds to: `audio_ready`, `media_player_idle`, `mic_unmuted`, `va_idle`, `va_detected`, `api_disconnected`, `announcement_started`, `mic_muted`, `wake_word_stop_requested`
 
-**`manager/audio.yaml`** — sound playback and audio feedback:
+**`managers/audio.yaml`** — sound playback and audio feedback:
 - Plays wake sound on `va_detected` (if enabled)
 - On `api_connected`: emits `wake_word_stop_requested`, waits for mic idle, plays startup sound, then emits `audio_ready`
 - Never calls `stop_wake_word` directly
@@ -451,7 +451,7 @@ For EchoEar troubleshooting (gesture detection, battery monitoring, display rota
 
 ### Completed (2026-Q2)
 - ✅ Event-driven voice assistant architecture with on-device and Home Assistant modes
-- ✅ Central audio state management (manager/audio.yaml)
+- ✅ Central audio state management (managers/audio.yaml)
 - ✅ Audio playback (startup sound, wake word beep, TTS response)
 - ✅ Microphone mute/unmute control
 - ✅ Gesture detection system (vendor-neutral)
