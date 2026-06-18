@@ -127,7 +127,7 @@ script:
                 format: "Voice: output idle reached ann=%d spk=%d"
                 args:
                   - "(id(va_media_player).state == media_player::MediaPlayerState::MEDIA_PLAYER_STATE_ANNOUNCING) ? 1 : 0"
-                  - "id(va_speaker).is_playing() ? 1 : 0"
+                  - "(id(va_media_player).state == media_player::MediaPlayerState::MEDIA_PLAYER_STATE_IDLE) ? 0 : 1"
             - switch.turn_on: va_microphone_switch
             - if:
                 condition:
@@ -256,7 +256,7 @@ script:
                 args:
                   - "id(va).is_running() ? 1 : 0"
                   - "(id(va_media_player).state == media_player::MediaPlayerState::MEDIA_PLAYER_STATE_ANNOUNCING) ? 1 : 0"
-                  - "id(va_speaker).is_playing() ? 1 : 0"
+              - "(id(va_media_player).state == media_player::MediaPlayerState::MEDIA_PLAYER_STATE_IDLE) ? 0 : 1"
             - script.execute: start_wake_word
 
       # Voice assistant listening / mic muted / api disconnected - stop wake word
