@@ -103,6 +103,9 @@ script:
     parameters:
       touchscreen_event: string
     then:
+      - script.execute:
+          id: display_manager_handle_touch_event
+          touchscreen_event: !lambda 'return touchscreen_event;'
       - if:
           condition:
             lambda: 'return touchscreen_event == "${touchscreen_swipe_left}";'

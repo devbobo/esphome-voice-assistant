@@ -8,7 +8,7 @@
 ##   - device-scoped voice_assistant packages publish events to system_event
 ##   - device-scoped media_player packages publish events to system_event
 ##   - va_microphone_switch publishes mic_muted/unmuted to system_event
-##   - All state managers (voice, audio, led_ring, touchscreen) listen
+##   - All state managers (voice, audio, led_ring, touchscreen, display) listen
 ##     to system_event and filter by event_type
 ##
 ## Routing Strategy:
@@ -169,8 +169,30 @@ event:
                 id: voice_state_manager_handle_event
                 event_type: !lambda return event_type;
 
+      # Display Manager - UI state and rendering intent
+      - if:
+          condition:
+            lambda: >-
+              return std::set<std::string>{
+                "${evt_api_connected}",
+                "${evt_api_disconnected}",
+                "${evt_announcement_started}",
+                "${evt_media_player_idle}",
+                "${evt_audio_ready}",
+                "${evt_va_idle}",
+                "${evt_va_listening}",
+                "${evt_va_thinking}",
+                "${evt_va_replying}",
+                "${evt_va_error}"
+              }.count(event_type) > 0;
+          then:
+            - script.execute:
+                id: display_manager_handle_system_event
+                event_type: !lambda return event_type;
+
 packages:
   audio_manager: !include managers/audio.yaml
   voice_manager: !include managers/voice.yaml
   led_ring_manager: !include managers/led_ring.yaml
   touchscreen_manager: !include managers/touchscreen.yaml
+  display_manager: !include managers/display.yaml
