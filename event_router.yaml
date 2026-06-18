@@ -175,21 +175,6 @@ event:
                 id: led_state_manager_handle_event
                 event_type: !lambda return event_type;
 
-      - if:
-          condition:
-            lambda: >-
-              return std::set<std::string>{
-                "${evt_media_player_idle}",
-                "${evt_mic_unmuted}",
-                "${evt_audio_ready}",
-                "${evt_va_idle}",
-                "${evt_va_detected}",
-              }.count(event_type) > 0;
-          then:
-            - script.execute:
-                id: voice_state_manager_handle_event
-                event_type: !lambda return event_type;
-
       # Display Manager - UI state and rendering intent
       - if:
           condition:
@@ -210,6 +195,21 @@ event:
           then:
             - script.execute:
                 id: display_manager_handle_system_event
+                event_type: !lambda return event_type;
+
+      - if:
+          condition:
+            lambda: >-
+              return std::set<std::string>{
+                "${evt_media_player_idle}",
+                "${evt_mic_unmuted}",
+                "${evt_audio_ready}",
+                "${evt_va_idle}",
+                "${evt_va_detected}",
+              }.count(event_type) > 0;
+          then:
+            - script.execute:
+                id: voice_state_manager_handle_event
                 event_type: !lambda return event_type;
 
 packages:

@@ -6,6 +6,7 @@
 ##   - hardware: Board and bus definitions
 ##   - io_entities: High-level microphone/speaker/LED entities
 ##   - battery: Fuel gauge sensors
+##   - display: Screen rendering and update loop
 ##   - touchscreen: Touch controller wiring
 ##   - media_player: Device-local media player wiring + shared media includes
 ##   - voice_assistant: Device-local voice assistant wiring + shared VA includes
@@ -17,6 +18,7 @@ packages:
   hardware: !include hardware.yaml
   io_entities: !include io_entities.yaml
   battery: !include battery.yaml
+  display: !include display.yaml
   touchscreen: !include touchscreen.yaml
   media_player: !include media_player.yaml
   voice_assistant: !include voice_assistant.yaml

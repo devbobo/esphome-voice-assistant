@@ -1,0 +1,101 @@
+## EchoEar Display Module
+## Owns display rendering and refresh behavior for the round LCD.
+## Visual state is sourced from display and LED ring managers.
+
+substitutions:
+  # Physical display dimensions (native resolution for JC3636W518V2: 360x360)
+  imagewidth: "360"
+  imageheight: "360"
+
+display:
+  - platform: mipi_spi
+    id: main_display
+    model: JC3636W518V2
+    cs_pin: 14
+    reset_pin: 4
+    rotation: ${rotate_display}
+    update_interval: never
+    dimensions:
+      height: ${imageheight}
+      width: ${imagewidth}
+    lambda: |-
+      const int width = 360;
+      const int height = 360;
+      const int center_x = width / 2;
+      const int center_y = height / 2;
+
+      if (id(dm_current_view) == "startup") {
+        // Startup page: Home Assistant themed logo and intro screen.
+        it.fill(Color(6, 8, 14));
+
+        // Soft halo behind logo mark.
+        it.filled_circle(center_x, center_y - 24, 92, Color(24, 66, 120));
+        it.filled_circle(center_x, center_y - 24, 72, Color(6, 8, 14));
+
+        // Simplified Home Assistant symbol (house + three nodes).
+        it.filled_rectangle(center_x - 30, center_y - 8, 60, 44, Color(34, 139, 230));
+        for (int i = 0; i < 28; i++) {
+          it.horizontal_line(center_x - 42 + i, center_y - 8 - i, 84 - (i * 2), Color(34, 139, 230));
+        }
+
+        it.filled_circle(center_x, center_y - 12, 8, Color(255, 255, 255));
+        it.filled_circle(center_x - 16, center_y + 8, 8, Color(255, 255, 255));
+        it.filled_circle(center_x + 16, center_y + 8, 8, Color(255, 255, 255));
+
+        // Accent bar at the bottom to indicate boot phase.
+        it.filled_rectangle(72, 314, 216, 10, Color(31, 42, 64));
+        it.filled_rectangle(72, 314, 132, 10, Color(34, 139, 230));
+        return;
+      }
+
+      // Base canvas
+      it.fill(Color(6, 8, 14));
+
+      // Top page tabs
+      for (int i = 0; i < 3; i++) {
+        const bool active = (i == id(dm_page_index));
+        const int tab_x = 24 + (i * 112);
+        const int tab_w = 88;
+        if (active) {
+          it.filled_rectangle(tab_x, 18, tab_w, 10, Color(232, 176, 51));
+        } else {
+          it.filled_rectangle(tab_x, 18, tab_w, 10, Color(42, 50, 68));
+        }
+      }
+
+      // Shared ring state halo (sourced from led_ring_state manager)
+      Color state_color = Color(52, 61, 82);
+      if (id(led_ring_state) == "listening") {
+        state_color = Color(32, 166, 255);
+      } else if (id(led_ring_state) == "processing") {
+        state_color = Color(71, 210, 123);
+      } else if (id(led_ring_state) == "muted") {
+        state_color = Color(222, 74, 74);
+      } else if (id(led_ring_state) == "error") {
+        state_color = Color(222, 74, 74);
+      }
+
+      it.filled_circle(center_x, center_y, 120, Color(18, 24, 36));
+      it.filled_circle(center_x, center_y, 102, state_color);
+      it.filled_circle(center_x, center_y, 84, Color(6, 8, 14));
+
+      // Detail mode overlay
+      if (id(dm_detail_mode)) {
+        it.filled_rectangle(72, 246, 216, 66, Color(31, 38, 56));
+        it.rectangle(72, 246, 216, 66, Color(232, 176, 51));
+      }
+
+      // Error bar for visibility regardless of current page
+      if (id(led_ring_state) == "error") {
+        it.filled_rectangle(0, 334, width, 26, Color(166, 39, 39));
+      }
+
+interval:
+  - interval: 150ms
+    then:
+      - if:
+          condition:
+            lambda: 'return id(dm_render_requested);'
+          then:
+            - lambda: id(dm_render_requested) = false;
+            - component.update: main_display
