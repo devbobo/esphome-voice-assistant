@@ -31,11 +31,6 @@ globals:
     restore_value: no
     initial_value: "false"
 
-  - id: dm_render_requested
-    type: bool
-    restore_value: no
-    initial_value: "true"
-
   - id: dm_last_system_event
     type: std::string
     restore_value: no
@@ -47,11 +42,6 @@ globals:
     initial_value: '""'
 
 script:
-  - id: display_manager_request_render
-    mode: restart
-    then:
-      - lambda: id(dm_render_requested) = true;
-
   - id: display_manager_recompute_view
     mode: restart
     then:
@@ -163,7 +153,6 @@ script:
   - id: display_manager_render
     mode: restart
     then:
-      - script.execute: display_manager_request_render
       - logger.log:
           format: "Display Manager: view=%s state=%s page=%d detail=%s system=%s touch=%s"
           args:
@@ -173,8 +162,3 @@ script:
             - 'id(dm_detail_mode) ? "on" : "off"'
             - "id(dm_last_system_event).c_str()"
             - "id(dm_last_touch_event).c_str()"
-
-interval:
-  - interval: 2s
-    then:
-      - script.execute: display_manager_request_render

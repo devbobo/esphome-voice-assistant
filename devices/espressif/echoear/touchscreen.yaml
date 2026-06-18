@@ -20,16 +20,11 @@ display:
     cs_pin: 14
     reset_pin: 4
     rotation: ${rotate_display}
-    update_interval: 250ms
+    update_interval: 1s
     dimensions:
       height: ${imageheight}
       width: ${imagewidth}
     lambda: |-
-      if (!id(dm_render_requested)) {
-        return;
-      }
-      id(dm_render_requested) = false;
-
       const int width = 360;
       const int height = 360;
       const int center_x = width / 2;
