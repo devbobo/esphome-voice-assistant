@@ -30,6 +30,30 @@ display:
       const int center_x = width / 2;
       const int center_y = height / 2;
 
+      if (id(dm_current_view) == "startup") {
+        // Startup page: Home Assistant themed logo and intro screen.
+        it.fill(Color(6, 8, 14));
+
+        // Soft halo behind logo mark.
+        it.filled_circle(center_x, center_y - 24, 92, Color(24, 66, 120));
+        it.filled_circle(center_x, center_y - 24, 72, Color(6, 8, 14));
+
+        // Simplified Home Assistant symbol (house + three nodes).
+        it.filled_rectangle(center_x - 30, center_y - 8, 60, 44, Color(34, 139, 230));
+        for (int i = 0; i < 28; i++) {
+          it.horizontal_line(center_x - 42 + i, center_y - 8 - i, 84 - (i * 2), Color(34, 139, 230));
+        }
+
+        it.filled_circle(center_x, center_y - 12, 8, Color(255, 255, 255));
+        it.filled_circle(center_x - 16, center_y + 8, 8, Color(255, 255, 255));
+        it.filled_circle(center_x + 16, center_y + 8, 8, Color(255, 255, 255));
+
+        // Accent bar at the bottom to indicate boot phase.
+        it.filled_rectangle(72, 314, 216, 10, Color(31, 42, 64));
+        it.filled_rectangle(72, 314, 132, 10, Color(34, 139, 230));
+        return;
+      }
+
       // Base canvas
       it.fill(Color(6, 8, 14));
 

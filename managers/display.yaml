@@ -14,7 +14,12 @@ globals:
   - id: dm_current_view
     type: std::string
     restore_value: no
-    initial_value: '"idle"'
+    initial_value: '"startup"'
+
+  - id: dm_show_startup
+    type: bool
+    restore_value: no
+    initial_value: "true"
 
   - id: dm_assistant_state
     type: std::string
@@ -46,6 +51,11 @@ script:
     mode: restart
     then:
       - lambda: |-
+          if (id(dm_show_startup)) {
+            id(dm_current_view) = "startup";
+            return;
+          }
+
           if (id(dm_detail_mode)) {
             id(dm_current_view) = "detail_" + id(dm_assistant_state);
             return;
@@ -108,6 +118,7 @@ script:
                 "${evt_api_connected}"
               }.count(event_type) > 0;
           then:
+            - lambda: id(dm_show_startup) = false;
             - lambda: id(dm_assistant_state) = "idle";
 
       - script.execute: display_manager_recompute_view
@@ -119,6 +130,7 @@ script:
       touchscreen_event: string
     then:
       - lambda: id(dm_last_touch_event) = touchscreen_event;
+      - lambda: id(dm_show_startup) = false;
 
       - if:
           condition:
