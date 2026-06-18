@@ -25,6 +25,11 @@ display:
       height: ${imageheight}
       width: ${imagewidth}
     lambda: |-
+      if (!id(dm_render_requested)) {
+        return;
+      }
+      id(dm_render_requested) = false;
+
       const int width = 360;
       const int height = 360;
       const int center_x = width / 2;
