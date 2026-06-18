@@ -78,7 +78,7 @@ script:
                       id: play_sound
                       priority: true
                       sound_file: !lambda return id(wake_word_triggered_sound);
-                    - script.wait: play_sound
+                  - script.wait: play_sound
                   - delay: 300ms
 
       # API connected
