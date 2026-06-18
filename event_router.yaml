@@ -138,20 +138,6 @@ event:
                 id: voice_state_manager_handle_event
                 event_type: !lambda return event_type;
 
-      # Audio State Manager - handles audio coordination
-      - if:
-          condition:
-            lambda: >-
-              return std::set<std::string>{
-                "${evt_api_connected}",
-                "${evt_api_disconnected}",
-                "${evt_va_detected}"
-              }.count(event_type) > 0;
-          then:
-            - script.execute:
-                id: audio_state_manager_handle_event
-                event_type: !lambda return event_type;
-
       # LED Ring State Manager - shared ring state decisions
       - if:
           condition:
@@ -192,6 +178,20 @@ event:
           then:
             - script.execute:
                 id: display_manager_handle_system_event
+                event_type: !lambda return event_type;
+
+      # Audio State Manager - handles audio coordination
+      - if:
+          condition:
+            lambda: >-
+              return std::set<std::string>{
+                "${evt_api_connected}",
+                "${evt_api_disconnected}",
+                "${evt_va_detected}"
+              }.count(event_type) > 0;
+          then:
+            - script.execute:
+                id: audio_state_manager_handle_event
                 event_type: !lambda return event_type;
 
       - if:
