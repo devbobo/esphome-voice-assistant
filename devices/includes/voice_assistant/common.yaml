@@ -116,6 +116,7 @@ switch:
     on_turn_off:
       - microphone.stop_capture:
           id: va_microphone
+      - voice_assistant.stop:
       - event.trigger:
           id: system_event
           event_type: ${evt_mic_muted}
