@@ -185,5 +185,5 @@ script:
       - logger.log:
           format: "Audio: play_sound speaker idle=%d"
           args:
-        - "(id(va_media_player).state == media_player::MediaPlayerState::MEDIA_PLAYER_STATE_IDLE) ? 1 : 0"
+            - "(id(va_media_player).state == media_player::MediaPlayerState::MEDIA_PLAYER_STATE_IDLE) ? 1 : 0"
       - delay: 300ms
