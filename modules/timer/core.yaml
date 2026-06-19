@@ -38,6 +38,11 @@ globals:
     restore_value: no
     initial_value: "false"
 
+  - id: mm_timer_alarm_queued
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
 script:
   ################################################################################
   ## Set Timer
@@ -77,6 +82,7 @@ script:
       - lambda: |-
           id(mm_timer_is_active) = false;
           id(mm_timer_is_expired) = false;
+          id(mm_timer_alarm_queued) = false;
           id(mm_timer_duration_sec) = 0;
       - event.trigger:
           id: led_event
@@ -93,6 +99,7 @@ script:
       - logger.log: "${mm_timer_log_acknowledging_expired}"
       - lambda: |-
           id(mm_timer_is_expired) = false;
+          id(mm_timer_alarm_queued) = false;
           id(mm_timer_duration_sec) = 0;
       - script.execute: audio_stop_sound
       - event.trigger:
@@ -126,8 +133,9 @@ interval:
       - script.execute: mm_timer_tick
       - if:
           condition:
-            lambda: "return id(mm_timer_is_expired);"
+            lambda: "return id(mm_timer_is_expired) && !id(mm_timer_alarm_queued);"
           then:
+            - lambda: "id(mm_timer_alarm_queued) = true;"
             - script.execute:
                 id: audio_queue_sound
                 sound_key: "timer_alarm"
