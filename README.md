@@ -59,6 +59,40 @@ esphome flash base.yaml
 esphome logs base.yaml
 ```
 
+## Recommended: Home Assistant Integration
+
+Most users will integrate this project with Home Assistant's ESPHome add-on:
+
+1. **Clone** this repository into your Home Assistant config folder:
+   ```bash
+   cd /config/esphome/
+   git clone https://github.com/devbobo/esphome-voice-assistant.git
+   ```
+
+2. **Create a device configuration** in Home Assistant's ESPHome directory (e.g., `echo-ear.yaml`):
+   ```yaml
+   substitutions:
+     name: echo-ear
+     friendly_name: ESPHome Voice Assistant
+     device: espressif/echoear
+
+   packages:
+     voice-assistant: !include esphome-voice-assistant/base.yaml
+
+   wifi:
+     ssid: !secret wifi_ssid
+     password: !secret wifi_password
+   ```
+
+3. **Pull updates** to the project and rebuild on HA:
+   ```bash
+   cd /config/esphome/esphome-voice-assistant
+   git pull
+   ```
+   Then rebuild the device in Home Assistant's ESPHome dashboard.
+
+The modular architecture allows `base.yaml` to package all framework logic, while your device YAML adds instance-specific configuration (WiFi, device name, etc.).
+
 ## Basic Configuration
 
 ### Device Selection
