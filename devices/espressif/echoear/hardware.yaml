@@ -72,3 +72,6 @@ spi:
   type: quad
   clk_pin: 18
   data_pins: [46, 13, 11, 12]
+
+wifi:
+  use_psram: true
