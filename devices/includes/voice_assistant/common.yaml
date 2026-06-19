@@ -244,7 +244,13 @@ micro_wake_word:
     - hey_jarvis
     - alexa
   on_wake_word_detected:
-    - script.execute: microphone_stop_listening
+    # Conditionally stop listening if hardware shares I2S bus
+    - if:
+        condition:
+          lambda: |-
+            return std::string("${i2s_shared_bus}") == "true";
+        then:
+          - script.execute: microphone_stop_listening
     - event.trigger:
         id: system_event
         event_type: "${evt_va_wake_word_detected}"
@@ -416,8 +422,13 @@ voice_assistant:
     - event.trigger:
         id: led_event
         event_type: "error"
-    # Stop listening before playing alarm sound (frees I2S bus)
-    - script.execute: microphone_stop_listening
+    # Conditionally stop listening if hardware shares I2S bus
+    - if:
+        condition:
+          lambda: |-
+            return std::string("${i2s_shared_bus}") == "true";
+        then:
+          - script.execute: microphone_stop_listening
     # Start looping alarm that continues until user acknowledges
     - script.execute: timer_play_looping_alarm
     - lambda: |-

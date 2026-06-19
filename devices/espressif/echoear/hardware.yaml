@@ -3,6 +3,10 @@
 ## This module defines only raw hardware interfaces and buses
 ## GPIO abstractions and high-level I/O entities are in io_entities.yaml
 
+substitutions:
+  # EchoEar has microphone and speaker on same I2S bus
+  i2s_shared_bus: "true"
+
 # Audio codec (microphone input)
 audio_adc:
   - platform: es7210
