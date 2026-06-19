@@ -1,0 +1,183 @@
+################################################################################
+## Interaction State Manager
+##
+## Single canonical owner of voice-assistant interaction state.
+## Maps system events to one shared state enum, then publishes
+## interaction_state_changed for all consumers (LED ring, display, etc.)
+##
+## Architecture:
+##   - Subscribes to: system_event via event_router routing
+##   - Publishes:    interaction_state_changed event
+##   - Consumers:    led_ring_manager, display_manager
+##
+## Canonical States:
+##   - not_connected: No Home Assistant API connection
+##   - idle:          Connected and ready, wake word armed
+##   - muted:         Microphone disabled
+##   - listening:     Wake word fired, voice assistant listening
+##   - thinking:      Speech detected, processing STT
+##   - replying:      TTS playback / announcement in progress
+##   - error:         Voice assistant error
+##
+## Separation of Concerns:
+##   - This manager: sole owner of WHAT the interaction state is.
+##   - led_ring_manager: decides HOW to represent state on the LED ring.
+##   - display_manager: decides HOW to represent state on the screen.
+##   - event_router: routes events; no state decisions.
+################################################################################
+
+substitutions:
+  istate_not_connected: "not_connected"
+  istate_idle:          "idle"
+  istate_muted:         "muted"
+  istate_listening:     "listening"
+  istate_thinking:      "thinking"
+  istate_replying:      "replying"
+  istate_error:         "error"
+  interaction_listening_timeout_ms: "20000"
+
+globals:
+  - id: canonical_interaction_state
+    type: std::string
+    restore_value: no
+    initial_value: '"${istate_not_connected}"'
+    # Canonical interaction state; updated by interaction_state_handle_system_event
+
+  - id: canonical_interaction_state_since_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+    # Timestamp when canonical_interaction_state last changed
+
+esphome:
+  on_boot:
+    - priority: -100
+      then:
+        - delay: 500ms
+        - event.trigger:
+            id: interaction_state_changed
+            event_type: !lambda return id(canonical_interaction_state);
+
+script:
+  ################################################################################
+  ## Interaction State - System Event Handler
+  ##
+  ## Called from event_router when system events occur.
+  ## Maps raw system events to canonical interaction states, resolving any
+  ## semantic ambiguity (e.g. mic_unmuted needs api_client_connected context).
+  ## Always publishes interaction_state_changed so consumers stay in sync.
+  ################################################################################
+  - id: interaction_state_handle_system_event
+    mode: queued
+    parameters:
+      event_type: string
+    then:
+      - lambda: |-
+          const std::string prev = id(canonical_interaction_state);
+          std::string next = id(canonical_interaction_state);
+
+          if (event_type == "${evt_api_connected}"   ||
+              event_type == "${evt_audio_ready}"     ||
+              event_type == "${evt_va_idle}") {
+            if (!id(va_microphone_switch).state) {
+              next = "${istate_muted}";
+            }
+            else if (!id(api_client_connected)) {
+              next = "${istate_not_connected}";
+            }
+            else {
+              next = "${istate_idle}";
+            }
+          }
+          else if (event_type == "${evt_api_disconnected}") {
+            next = "${istate_not_connected}";
+          }
+          else if (event_type == "${evt_mic_muted}") {
+            next = "${istate_muted}";
+          }
+          else if (event_type == "${evt_mic_unmuted}") {
+            // Resolve ambiguity: unmuted while disconnected stays not_connected
+            next = id(api_client_connected) ? "${istate_idle}" : "${istate_not_connected}";
+          }
+          else if (event_type == "${evt_wake_acknowledged}" ||
+                   event_type == "${evt_va_listening}") {
+            next = "${istate_listening}";
+          }
+          else if (event_type == "${evt_va_thinking}") {
+            next = "${istate_thinking}";
+          }
+          else if (event_type == "${evt_va_replying}"        ||
+                   event_type == "${evt_announcement_started}") {
+            next = "${istate_replying}";
+          }
+          else if (event_type == "${evt_va_error}") {
+            next = "${istate_error}";
+          }
+
+          id(canonical_interaction_state) = next;
+          if (next != prev) {
+            id(canonical_interaction_state_since_ms) = millis();
+          }
+          ESP_LOGD("interaction", "Interaction state: %s", next.c_str());
+      - event.trigger:
+          id: interaction_state_changed
+          event_type: !lambda return id(canonical_interaction_state);
+
+interval:
+  - interval: 1s
+    then:
+      - if:
+          condition:
+            lambda: |-
+              if (id(canonical_interaction_state) != "${istate_listening}") {
+                return false;
+              }
+              const uint32_t since = id(canonical_interaction_state_since_ms);
+              if (since == 0) {
+                return false;
+              }
+              return (millis() - since) >= ${interaction_listening_timeout_ms};
+          then:
+            - logger.log:
+                format: "Interaction timeout: listening exceeded %u ms, forcing recovery"
+                args: ['(unsigned int) ${interaction_listening_timeout_ms}']
+            - event.trigger:
+                id: system_event
+                event_type: "${evt_wake_word_stop_requested}"
+            - voice_assistant.stop:
+            - lambda: |-
+                const std::string next =
+                  !id(api_client_connected) ? "${istate_not_connected}" :
+                  (!id(va_microphone_switch).state ? "${istate_muted}" : "${istate_idle}");
+
+                id(canonical_interaction_state) = next;
+                id(canonical_interaction_state_since_ms) = millis();
+            - event.trigger:
+                id: interaction_state_changed
+                event_type: !lambda return id(canonical_interaction_state);
+
+################################################################################
+## Interaction State Changed Event
+##
+## Published whenever the canonical interaction state is updated.
+## Consumers (LED ring, display) subscribe here; no direct system_event routing
+## is needed in those managers.
+################################################################################
+event:
+  - platform: template
+    id: interaction_state_changed
+    event_types:
+      - ${istate_not_connected}
+      - ${istate_idle}
+      - ${istate_muted}
+      - ${istate_listening}
+      - ${istate_thinking}
+      - ${istate_replying}
+      - ${istate_error}
+    on_event:
+      - script.execute:
+          id: led_ring_handle_interaction_state
+          interaction_state: !lambda return event_type;
+      - script.execute:
+          id: display_manager_handle_interaction_state
+          interaction_state: !lambda return event_type;

@@ -95,9 +95,9 @@ switch:
     # When disabled, touch is detected but processed without firing events (useful for boot, updates, or UI modes that shouldn't respond to gestures)
 
 ## Touchscreen event Handler Script
-## Centralized event router that processes all touch gestures
-## Maps gesture types to display logic and user actions
-## Gesture types: Swipe Left/Right/Up/Down, Single/Long/Double Press
+## Centralized event router that dispatches touch events to consumers.
+## Gesture detection/production stays in touchscreen manager; view policy lives
+## in display manager.
 script:
   - id: handle_touchscreen_event
     parameters:
@@ -106,39 +106,3 @@ script:
       - script.execute:
           id: display_manager_handle_touch_event
           touchscreen_event: !lambda 'return touchscreen_event;'
-      - if:
-          condition:
-            lambda: 'return touchscreen_event == "${touchscreen_swipe_left}";'
-          then:
-            - logger.log: "Touchscreen event: ${touchscreen_swipe_left}"
-            # Add your display logic for swipe left here
-      - if:
-          condition:
-            lambda: 'return touchscreen_event == "${touchscreen_swipe_right}";'
-          then:
-            - logger.log: "Touchscreen event: ${touchscreen_swipe_right}"
-            # Add your display logic for swipe right here
-      - if:
-          condition:
-            lambda: 'return touchscreen_event == "${touchscreen_swipe_up}";'
-          then:
-            - logger.log: "Touchscreen event: ${touchscreen_swipe_up}"
-            # Add your display logic for swipe up here
-      - if:
-          condition:
-            lambda: 'return touchscreen_event == "${touchscreen_swipe_down}";'
-          then:
-            - logger.log: "Touchscreen event: ${touchscreen_swipe_down}"
-            # Add your display logic for swipe down here
-      - if:
-          condition:
-            lambda: 'return touchscreen_event == "${touchscreen_long_press}";'
-          then:
-            - logger.log: "Touchscreen event: ${touchscreen_long_press}"
-            # Add your display logic for long press here
-      - if:
-          condition:
-            lambda: 'return touchscreen_event == "${touchscreen_double_press}";'
-          then:
-            - logger.log: "Touchscreen event: ${touchscreen_double_press}"
-            # Add your display logic for double tap here

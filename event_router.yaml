@@ -137,40 +137,19 @@ event:
                 id: voice_state_manager_handle_event
                 event_type: !lambda return event_type;
 
-      # LED Ring State Manager - shared ring state decisions
+      # Interaction State Manager - canonical state owner for LED and display
       - if:
           condition:
             lambda: >-
               return std::set<std::string>{
                 "${evt_api_connected}",
                 "${evt_api_disconnected}",
-                "${evt_announcement_started}",
-                "${evt_mic_muted}",
-                "${evt_mic_unmuted}",
-                "${evt_va_idle}",
-                "${evt_wake_acknowledged}",
-                "${evt_va_listening}",
-                "${evt_va_thinking}",
-                "${evt_va_error}"
-              }.count(event_type) > 0;
-          then:
-            - script.execute:
-                id: led_state_manager_handle_event
-                event_type: !lambda return event_type;
-
-      # Display Manager - UI state and rendering intent
-      - if:
-          condition:
-            lambda: >-
-              return std::set<std::string>{
-                "${evt_api_connected}",
-                "${evt_api_disconnected}",
-                "${evt_announcement_started}",
                 "${evt_audio_ready}",
+                "${evt_announcement_started}",
                 "${evt_mic_muted}",
                 "${evt_mic_unmuted}",
-                "${evt_wake_acknowledged}",
                 "${evt_va_idle}",
+                "${evt_wake_acknowledged}",
                 "${evt_va_listening}",
                 "${evt_va_thinking}",
                 "${evt_va_replying}",
@@ -178,7 +157,7 @@ event:
               }.count(event_type) > 0;
           then:
             - script.execute:
-                id: display_manager_handle_system_event
+                id: interaction_state_handle_system_event
                 event_type: !lambda return event_type;
 
       # Audio State Manager - handles audio coordination
@@ -208,6 +187,7 @@ event:
                 event_type: !lambda return event_type;
 
 packages:
+  interaction_manager: !include managers/interaction.yaml
   audio_manager: !include managers/audio.yaml
   voice_manager: !include managers/voice.yaml
   led_ring_manager: !include managers/led_ring.yaml

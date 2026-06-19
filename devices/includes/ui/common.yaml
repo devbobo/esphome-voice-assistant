@@ -24,4 +24,3 @@ interval:
             - lvgl.widget.update:
                 id: ui_detail_card
                 hidden: !lambda return !id(dm_detail_mode);
-            - script.execute: led_ring_apply_device_handler

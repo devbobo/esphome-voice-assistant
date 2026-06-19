@@ -30,6 +30,7 @@ base.yaml
   -> devices/<vendor>/<model>/device.yaml
   -> event_router.yaml
      -> managers/
+        -> interaction.yaml
         -> audio.yaml
         -> voice.yaml
         -> led_ring.yaml
@@ -71,11 +72,12 @@ devices/espressif/echoear/device.yaml
 
 ### State Managers
 
+- `managers/interaction.yaml`: Canonical interaction-state owner (maps raw system events to `not_connected`, `idle`, `muted`, `listening`, `thinking`, `replying`, `error`) and publishes `interaction_state_changed`
 - `managers/audio.yaml`: Audio event handling and startup sound coordination
 - `managers/voice.yaml`: Wake-word lifecycle ownership and gating
-- `managers/led_ring.yaml`: LED ring state and feedback behavior
-- `managers/touchscreen.yaml`: Gesture event/state tracking and routing
-- `managers/display.yaml`: Display state/view model and render triggers
+- `managers/led_ring.yaml`: LED ring translation layer from canonical interaction state to LED events and device rendering
+- `managers/touchscreen.yaml`: Gesture event/state tracking and gesture event dispatch
+- `managers/display.yaml`: Display state/view model and render triggers; consumes canonical interaction state and touchscreen events
 
 ### Device Modules
 
@@ -103,11 +105,27 @@ Common reusable fragments in `devices/includes/`:
 
 ## Event-Driven Design
 
-Most cross-module coordination is done through `system_event` routing, with one intentional direct handoff for touchscreen input to display handling.
+Most cross-module coordination is done through `system_event` routing into a canonical interaction-state layer.
 
 ### Principle
 
-Managers publish/consume `system_event` for lifecycle coordination, and `event_router.yaml` routes those events to interested managers. Touch input follows a separate path: `touchscreen_event` -> `managers/touchscreen.yaml` -> `display_manager_handle_touch_event`.
+- Producers publish lifecycle events to `system_event`.
+- `event_router.yaml` routes those raw events to managers.
+- `managers/interaction.yaml` is the single semantic owner that maps raw lifecycle events to one canonical interaction state.
+- Consumers (`managers/led_ring.yaml`, `managers/display.yaml`) react to `interaction_state_changed` instead of remapping raw events independently.
+- Touch input remains a separate path: `touchscreen_event` -> `managers/touchscreen.yaml` -> `display_manager_handle_touch_event`.
+
+### Canonical Interaction Flow
+
+```text
+voice/media/api/mic events
+   -> system_event
+   -> event_router.yaml
+   -> managers/interaction.yaml (single mapping owner)
+   -> interaction_state_changed
+       -> managers/led_ring.yaml (state -> LED behavior)
+       -> managers/display.yaml (state -> view model)
+```
 
 ### Typical Event Sources
 
@@ -120,7 +138,9 @@ Managers publish/consume `system_event` for lifecycle coordination, and `event_r
 
 - Audio manager for sound/state synchronization
 - Voice manager for wake-word lifecycle transitions
-- LED/touchscreen/display managers for UI feedback and input flow
+- Interaction manager for canonical interaction semantics
+- LED and display managers for feedback rendering from canonical state
+- Touchscreen manager for input dispatch
 
 ## Voice Assistant Architecture
 
@@ -151,7 +171,8 @@ Gesture detection is designed to be vendor-neutral:
 
 - Device driver reports touch events and coordinates.
 - Shared include handlers classify gestures based on movement and timing.
-- Touchscreen manager receives and routes resulting events.
+- Touchscreen manager emits/dispatches resulting gesture events.
+- Display manager owns page/detail navigation policy from those gesture events.
 
 This allows reuse of classification logic across different touchscreen controllers.
 
@@ -159,6 +180,7 @@ This allows reuse of classification logic across different touchscreen controlle
 
 - Root `i18n.yaml` defines shared labels and gesture/status strings.
 - Device-level `i18n.yaml` files define only device-specific labels.
+- Device behavior overrides belong in device composition (`device.yaml`), not in i18n files.
 
 The substitution strategy keeps localization centralized and avoids string duplication.
 
@@ -241,11 +263,13 @@ To add a new subsystem manager while preserving architecture style:
 ## Guardrails and Conventions
 
 - Prefer event constants/substitutions over hardcoded event strings.
+- Keep one canonical owner for cross-cutting interaction semantics (`managers/interaction.yaml`).
 - Keep state ownership local to the manager that owns behavior.
 - Keep hardware specifics in device files, not shared managers.
 - Keep includes focused and reusable (single concern per include file).
 - Keep load order explicit and deterministic in orchestrator files.
 - Keep router event lists and manager contracts synchronized when introducing new events.
+- Keep UI render loops side-effect free; avoid triggering non-UI behavior from polling intervals.
 
 ## Related Documentation
 

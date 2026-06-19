@@ -72,6 +72,9 @@ voice_assistant:
 
   on_error:
     - logger.log: "Voice assistant error"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_error}
     - delay: 1s
     - if:
         condition:
@@ -96,7 +99,7 @@ select:
     on_value:
       - event.trigger:
           id: system_event
-          event_type: "wake_word_location_changed"
+          event_type: "${evt_wake_word_location_changed}"
 
 switch:
   - platform: template
