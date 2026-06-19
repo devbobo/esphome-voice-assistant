@@ -135,6 +135,47 @@ script:
           timeout: 3s
       - delay: 200ms
 
+  - id: timer_queue_alarm_if_active
+    then:
+      # Only queue sound if alarm switch is still on
+      - if:
+          condition:
+            switch.is_on: timer_ringing
+          then:
+            - script.execute:
+                id: audio_queue_sound
+                sound_key: "timer_alarm"
+          else:
+            - logger.log: "Timer alarm: Skipped queue (alarm stopped)"
+
+  - id: timer_play_looping_alarm
+    mode: restart
+    then:
+      - logger.log: "Timer alarm: Starting looping playback"
+      - switch.turn_on: timer_ringing
+      - while:
+          condition:
+            switch.is_on: timer_ringing
+          then:
+            # Guard: only queue if switch still on (prevents accumulation after stop)
+            - script.execute: timer_queue_alarm_if_active
+            # Wait for sound to finish
+            - wait_until:
+                condition:
+                  not:
+                    media_player.is_announcing:
+            - delay: 50ms
+      - logger.log: "Timer alarm: Looping playback stopped"
+
+  - id: timer_stop_looping_alarm
+    mode: restart
+    then:
+      - logger.log: "Timer alarm: Stopping alarm"
+      - switch.turn_off: timer_ringing
+      - media_player.stop:
+          id: va_media_player
+      - script.execute: audio_stop_sound
+
   - id: toggle_voice_assistant
     then:
       - media_player.stop:
@@ -205,7 +246,7 @@ button:
     name: "Cancel Timer"
     on_press:
       - logger.log: "Cancel timer button pressed"
-      - switch.turn_off: timer_ringing
+      - script.execute: timer_stop_looping_alarm
       - voice_assistant.stop:
 
 micro_wake_word:
@@ -400,14 +441,14 @@ voice_assistant:
             return std::string("${i2s_shared_bus}") == "true";
         then:
           - script.execute: microphone_stop_listening
-    # Start looping alarm using native media player repeat (responsive to button stops)
-    - switch.turn_on: timer_ringing
+    # Start looping alarm using guard-checked script
+    - script.execute: timer_play_looping_alarm
     - lambda: |-
         id(dm_current_view) = "module_timer:expired";
 
   on_timer_cancelled:
     - logger.log: "Timer cancelled"
-    - switch.turn_off: timer_ringing
+    - script.execute: timer_stop_looping_alarm
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_cancelled}"
@@ -504,26 +545,8 @@ switch:
     id: timer_ringing
     name: "Timer Ringing"
     optimistic: true
-    internal: true
     restore_mode: ALWAYS_OFF
     on_turn_on:
-      - logger.log: "Timer ringing: Starting alarm"
-      # Play alarm sound with looping
-      - while:
-          condition:
-            switch.is_on: timer_ringing
-          then:
-            - script.execute:
-                id: audio_queue_sound
-                sound_key: "timer_alarm"
-            - wait_until:
-                condition:
-                  not:
-                    media_player.is_announcing:
-            - delay: 100ms
-      - logger.log: "Timer ringing: Alarm loop stopped"
+      - logger.log: "Timer ringing: Switch turned on"
     on_turn_off:
-      - logger.log: "Timer ringing: Stopping alarm"
-      - media_player.stop:
-          id: va_media_player
-      - script.execute: audio_stop_sound
+      - logger.log: "Timer ringing: Switch turned off"
