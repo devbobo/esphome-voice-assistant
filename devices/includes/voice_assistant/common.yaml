@@ -229,7 +229,6 @@ micro_wake_word:
 voice_assistant:
   id: va
   microphone: va_microphone
-  speaker: va_speaker
   media_player: va_media_player
   micro_wake_word: mww
   noise_suppression_level: 2
