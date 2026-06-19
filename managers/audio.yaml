@@ -151,3 +151,29 @@ script:
                 id: va_speaker
           timeout: 5s
       - delay: 300ms
+
+  ############################################################################
+  ## Module Hooks - Called by modules to queue sounds
+  ##
+  ## Modules can call these scripts to queue sounds for playback.
+  ## This allows modules to provide audio feedback without tight coupling.
+  ############################################################################
+
+  - id: audio_queue_sound
+    mode: queued
+    parameters:
+      sound_key: string
+    then:
+      - logger.log:
+          format: "Audio: Queue sound '%s'"
+          args: ["sound_key.c_str()"]
+      # TODO: Implement sound queuing based on sound_key
+      # This is a stub that logs the request.
+      # Actual implementation depends on your audio system and available sounds.
+
+  - id: audio_stop_sound
+    mode: queued
+    then:
+      - logger.log: "Audio: Stop current sound"
+      # TODO: Implement sound stopping
+      # Stop currently playing announcement/sound from modules

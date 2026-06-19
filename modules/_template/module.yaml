@@ -1,0 +1,39 @@
+################################################################################
+## Module Template
+##
+## This is a template for creating new modules. Copy this directory and modify.
+##
+## Modules are self-contained functionality that can:
+##   - Own their own state
+##   - Register voice commands
+##   - Define display pages
+##   - Emit LED feedback
+##   - Queue sounds
+##   - Listen to system events
+##
+## To activate a module, include it in event_router.yaml:
+##   packages:
+##     module_my_module: !include modules/my_module/module.yaml
+################################################################################
+
+# Module substitutions/config (optional)
+substitutions:
+  # Define your substitutions here
+
+# Module state (optional)
+globals:
+  # Define your state variables here
+  # Naming: mm_{module_name}_{purpose}
+
+# Module scripts (optional)
+script:
+  # Define your scripts here
+  # Use for voice commands, event handlers, etc.
+
+# Module intervals/timers (optional)
+interval:
+  # Define your background tasks here
+
+# Module events (optional)
+event:
+  # Define custom events here if needed

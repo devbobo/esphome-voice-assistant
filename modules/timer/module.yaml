@@ -1,0 +1,167 @@
+################################################################################
+## Timer Module
+##
+## Provides a verbal timer interface. Users can say "set a timer for 5 minutes"
+## and the device will count down. When the timer expires, a sound plays and
+## a screen displays. The expired state persists until acknowledged via voice
+## or physical interaction.
+##
+## State Management:
+##   - mm_timer_duration_sec: Total duration in seconds
+##   - mm_timer_started_ms: System time when timer was started
+##   - mm_timer_is_active: Whether timer is currently running
+##   - mm_timer_is_expired: Whether timer has finished counting down
+##
+## Voice Commands:
+##   - "set a timer for X minutes/seconds"
+##   - "cancel the timer"
+##   - "stop the timer" (acknowledges expired state)
+##
+## Display:
+##   - timer_countdown: Shows remaining time
+##   - timer_expired: Shows "Timer Expired" with acknowledge prompt
+##
+## LED Feedback:
+##   - Active timer: uses "processing" state (pulsing/animation)
+##   - Expired: uses "error" state (red/alert)
+##
+## Sounds:
+##   - Timer started: confirmation beep
+##   - Timer expired: repeating alarm tone (until acknowledged)
+##
+################################################################################
+
+substitutions:
+  # No substitutions needed for basic timer
+
+globals:
+  - id: mm_timer_duration_sec
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+    # Total duration in seconds
+
+  - id: mm_timer_started_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+    # System time (millis) when timer was started
+
+  - id: mm_timer_is_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+    # Whether timer is currently counting down
+
+  - id: mm_timer_is_expired
+    type: bool
+    restore_value: no
+    initial_value: "false"
+    # Whether timer has finished and is awaiting acknowledgement
+
+script:
+  ############################################################################
+  ## Set Timer - Called when user says "set a timer for X minutes"
+  ############################################################################
+  - id: mm_timer_command_set
+    mode: queued
+    parameters:
+      duration_sec: uint32_t
+    then:
+      - logger.log:
+          format: "Timer: Setting timer for %u seconds"
+          args: ["duration_sec"]
+      - lambda: |-
+          id(mm_timer_duration_sec) = duration_sec;
+          id(mm_timer_started_ms) = millis();
+          id(mm_timer_is_active) = true;
+          id(mm_timer_is_expired) = false;
+      # Trigger LED feedback for active timer
+      - event.trigger:
+          id: led_event
+          event_type: "processing"
+      # Queue confirmation sound
+      - script.execute:
+          id: audio_queue_sound
+          sound_key: "timer_started"
+      # Update display to show countdown
+      - lambda: |-
+          id(dm_current_view) = "module_timer:countdown";
+
+  ############################################################################
+  ## Cancel Timer - Called when user says "cancel the timer"
+  ############################################################################
+  - id: mm_timer_command_cancel
+    mode: queued
+    then:
+      - logger.log: "Timer: Cancelled by user"
+      - lambda: |-
+          id(mm_timer_is_active) = false;
+          id(mm_timer_is_expired) = false;
+          id(mm_timer_duration_sec) = 0;
+      # Return to idle state
+      - event.trigger:
+          id: led_event
+          event_type: "idle"
+      - lambda: |-
+          id(dm_current_view) = "page_0_idle";
+
+  ############################################################################
+  ## Acknowledge Expired - Called when user says "stop" or interacts after expiry
+  ############################################################################
+  - id: mm_timer_command_acknowledge_expired
+    mode: queued
+    then:
+      - logger.log: "Timer: Expired state acknowledged"
+      - lambda: |-
+          id(mm_timer_is_expired) = false;
+          id(mm_timer_duration_sec) = 0;
+      # Stop the alarm sound loop
+      - script.execute: audio_stop_sound
+      # Return to idle
+      - event.trigger:
+          id: led_event
+          event_type: "idle"
+      - lambda: |-
+          id(dm_current_view) = "page_0_idle";
+
+  ############################################################################
+  ## Timer Tick - Called every second to check if timer has expired
+  ############################################################################
+  - id: mm_timer_tick
+    mode: queued
+    then:
+      - if:
+          condition:
+            lambda: "return id(mm_timer_is_active);"
+          then:
+            - lambda: |-
+                const uint32_t elapsed_sec = (millis() - id(mm_timer_started_ms)) / 1000;
+                const uint32_t total_sec = id(mm_timer_duration_sec);
+                
+                if (elapsed_sec >= total_sec) {
+                  // Timer has expired
+                  id(mm_timer_is_active) = false;
+                  id(mm_timer_is_expired) = true;
+                  ESP_LOGI("timer", "Timer expired!");
+                }
+
+interval:
+  - interval: 1s
+    then:
+      - script.execute: mm_timer_tick
+      # If timer is expired, queue the alarm sound (it will loop)
+      - if:
+          condition:
+            lambda: "return id(mm_timer_is_expired);"
+          then:
+            - script.execute:
+                id: audio_queue_sound
+                sound_key: "timer_alarm"
+            # Update LED to alert state
+            - event.trigger:
+                id: led_event
+                event_type: "error"
+            # Update display to expired state
+            - lambda: |-
+                id(dm_current_view) = "module_timer:expired";
