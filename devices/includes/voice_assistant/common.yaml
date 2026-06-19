@@ -123,6 +123,19 @@ script:
       - lambda: |-
           ESP_LOGI("timer", "Display: Timer Expired");
 
+  - id: toggle_voice_assistant
+    then:
+      - media_player.stop:
+          id: va_media_player
+      - if:
+          condition:
+            not:
+              voice_assistant.is_running:
+          then:
+            - voice_assistant.start:
+          else:
+            - voice_assistant.stop:
+
 binary_sensor:
   - platform: template
     id: mm_timer_is_active_ha
@@ -480,17 +493,3 @@ switch:
       - event.trigger:
           id: system_event
           event_type: ${evt_mic_unmuted}
-
-script:
-  - id: toggle_voice_assistant
-    then:
-      - media_player.stop:
-          id: va_media_player
-      - if:
-          condition:
-            not:
-              voice_assistant.is_running:
-          then:
-            - voice_assistant.start:
-          else:
-            - voice_assistant.stop:
