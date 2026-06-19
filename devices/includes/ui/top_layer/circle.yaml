@@ -1,0 +1,11 @@
+widgets:
+  - obj:
+      id: ui_led_ring
+      x: 0
+      y: 0
+      width: ${ring_width}
+      height: ${ring_height}
+    radius: !lambda return ${ring_height} / 2;
+    border_width: ${ring_thickness}
+    border_color: ${led_color_not_connected}
+    bg_opa: TRANSP

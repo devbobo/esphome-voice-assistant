@@ -7,4 +7,4 @@ substitutions:
   ring_width: ${display_width}  # Overall width of the ring widget; typically same as height for circular rings.
 
 packages:
-  ui_common: !include ../../includes/ui/common.yaml
+  ui_circle: !include ../../includes/ui/${display_shape}.yaml

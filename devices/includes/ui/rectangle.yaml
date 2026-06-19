@@ -1,0 +1,10 @@
+## Rectangle UI Layout
+## Shared LVGL layout for rectangular displays.
+
+substitutions:
+  ring_thickness: "8"
+  detail_card_x: "16"
+  detail_card_y: "16"
+
+packages:
+  common: !include common.yaml

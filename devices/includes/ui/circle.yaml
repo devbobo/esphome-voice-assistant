@@ -1,0 +1,13 @@
+## Circular UI Layout
+## Shared LVGL layout for round displays.
+
+substitutions:
+  ring_height: ${display_height}
+  ring_thickness: "15"
+  ring_width: ${display_width}
+  detail_card_x: "72"
+  detail_card_y: "246"
+  detail_card_width: "216"
+
+packages:
+  common: !include common.yaml

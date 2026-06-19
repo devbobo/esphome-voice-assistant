@@ -33,6 +33,14 @@ substitutions:
   led_event_idle: "idle"
   led_event_error: "error"
 
+  # LED Ring State Colors (consumed by UI and device handlers)
+  led_color_not_connected: "0x8B6A2A"
+  led_color_idle: "0x343D52"
+  led_color_listening: "0x20A6FF"
+  led_color_processing: "0x47D27B"
+  led_color_muted: "0xDE4A4A"
+  led_color_error: "0xDE4A4A"
+
 ## LED State Tracking
 globals:
   - id: led_ring_state

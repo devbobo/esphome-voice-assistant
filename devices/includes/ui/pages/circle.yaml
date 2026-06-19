@@ -1,0 +1,14 @@
+- id: main_page
+  bg_color: 0x06080E
+  widgets:
+    - obj:
+        id: ui_detail_card
+        x: ${detail_card_x}
+        y: ${detail_card_y}
+        width: ${detail_card_width}
+        height: 66
+        radius: 8
+        border_width: 2
+        border_color: 0xE8B033
+        bg_color: 0x1F2638
+        hidden: true

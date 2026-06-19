@@ -6,7 +6,7 @@
 # CST816 Touchscreen Driver
 touchscreen:
   - platform: cst816
-    id: touch_screen
+    id: va_touch_screen
     interrupt_pin: GPIO10
     display: va_display
     i2c_id: bus_a

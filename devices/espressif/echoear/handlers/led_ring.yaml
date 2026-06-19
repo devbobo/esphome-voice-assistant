@@ -4,17 +4,20 @@
 
 - lvgl.widget.update:
     id: ui_led_ring
-    bg_color: !lambda |-
+    border_color: !lambda |-
       if (id(led_ring_state) == "${led_event_not_connected}") {
-        return lv_color_hex(0x8B6A2A);
+        return lv_color_hex(${led_color_not_connected});
       }
       if (id(led_ring_state) == "${led_event_listening}") {
-        return lv_color_hex(0x20A6FF);
+        return lv_color_hex(${led_color_listening});
       }
       if (id(led_ring_state) == "${led_event_processing}") {
-        return lv_color_hex(0x47D27B);
+        return lv_color_hex(${led_color_processing});
       }
-      if (id(led_ring_state) == "${led_event_muted}" || id(led_ring_state) == "${led_event_error}") {
-        return lv_color_hex(0xDE4A4A);
+      if (id(led_ring_state) == "${led_event_muted}") {
+        return lv_color_hex(${led_color_muted});
       }
-      return lv_color_hex(0x343D52);
+      if (id(led_ring_state) == "${led_event_error}") {
+        return lv_color_hex(${led_color_error});
+      }
+      return lv_color_hex(${led_color_idle});
