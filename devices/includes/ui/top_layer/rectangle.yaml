@@ -5,7 +5,7 @@ widgets:
       y: 0
       width: ${display_width}
       height: ${display_height}
-    radius: 12
-    border_width: ${ring_thickness}
-    border_color: ${led_color_not_connected}
-    bg_opa: TRANSP
+      radius: 12
+      border_width: ${ring_thickness}
+      border_color: ${led_color_not_connected}
+      bg_opa: TRANSP

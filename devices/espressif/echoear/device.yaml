@@ -14,6 +14,9 @@
 ##
 ## Change the device package path in base.yaml to support different hardware
 
+substitutions:
+  display_shape: "circle"
+
 packages:
   i18n: !include i18n.yaml
   hardware: !include hardware.yaml
