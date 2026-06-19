@@ -70,7 +70,15 @@ script:
           if (event_type == "${evt_api_connected}"   ||
               event_type == "${evt_audio_ready}"     ||
               event_type == "${evt_va_idle}") {
-            next = "${istate_idle}";
+            if (!id(va_microphone_switch).state) {
+              next = "${istate_muted}";
+            }
+            else if (!id(api_client_connected)) {
+              next = "${istate_not_connected}";
+            }
+            else {
+              next = "${istate_idle}";
+            }
           }
           else if (event_type == "${evt_api_disconnected}") {
             next = "${istate_not_connected}";
@@ -122,17 +130,22 @@ interval:
               return (millis() - since) >= ${interaction_listening_timeout_ms};
           then:
             - logger.log:
-                format: "Interaction timeout: listening exceeded %u ms, forcing idle"
+                format: "Interaction timeout: listening exceeded %u ms, forcing recovery"
                 args: ['(unsigned int) ${interaction_listening_timeout_ms}']
             - event.trigger:
                 id: system_event
                 event_type: "${evt_wake_word_stop_requested}"
+            - voice_assistant.stop:
             - lambda: |-
-                id(canonical_interaction_state) = "${istate_idle}";
+                const std::string next =
+                  !id(api_client_connected) ? "${istate_not_connected}" :
+                  (!id(va_microphone_switch).state ? "${istate_muted}" : "${istate_idle}");
+
+                id(canonical_interaction_state) = next;
                 id(canonical_interaction_state_since_ms) = millis();
             - event.trigger:
                 id: interaction_state_changed
-                event_type: "${istate_idle}"
+                event_type: !lambda return id(canonical_interaction_state);
 
 ################################################################################
 ## Interaction State Changed Event
