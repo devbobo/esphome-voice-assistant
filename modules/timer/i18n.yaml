@@ -1,0 +1,107 @@
+################################################################################
+## Timer Module - Internationalization (i18n)
+##
+## All user-facing strings are defined here for easy translation and
+## centralized management. This file serves as the single source of truth
+## for all text shown to users.
+##
+## Structure:
+##   mm_timer:
+##     logs: Logger messages (technical, developer-facing)
+##     display: Display text (user-facing on screen)
+##     voice: Voice command descriptions
+##     ha: Home Assistant entity names and descriptions
+##
+## Usage in code:
+##   Instead of: logger.log: "Timer: Setting timer"
+##   Use YAML substitution or reference to: ${mm_timer_log_setting_timer}
+##
+## Translation:
+##   Create localized copies: i18n_es.yaml, i18n_fr.yaml, etc.
+##   Include the appropriate file based on device language setting.
+################################################################################
+
+substitutions:
+  # ############################################################################
+  # Logger Messages - Developer/Technical
+  # ############################################################################
+  
+  mm_timer_log_voice_handler_received: "Timer: Voice handler received intent '%s' with data '%s'"
+  mm_timer_log_setting_timer_minutes: "Timer: Setting timer (minutes intent)"
+  mm_timer_log_setting_timer_seconds: "Timer: Setting timer (seconds intent)"
+  mm_timer_log_cancelling_timer: "Timer: Cancelling timer"
+  mm_timer_log_acknowledging_expired: "Timer: Acknowledging expired timer"
+  mm_timer_log_rendering_countdown: "Timer: Rendering countdown page"
+  mm_timer_log_rendering_expired: "Timer: Rendering expired page"
+  
+  # ############################################################################
+  # Display Text - User-Facing on Screen
+  # ############################################################################
+  
+  mm_timer_display_title_countdown: "Timer"
+  mm_timer_display_prompt_countdown: "Say 'cancel' to stop"
+  mm_timer_display_title_expired: "Timer Expired"
+  mm_timer_display_prompt_expired: "Say 'stop' to acknowledge"
+  mm_timer_display_duration_format: "%u:%02u"
+  
+  # ############################################################################
+  # Voice Intent Descriptions
+  # ############################################################################
+  
+  mm_timer_voice_set_minutes_desc: "Set a timer for N minutes"
+  mm_timer_voice_set_seconds_desc: "Set a timer for N seconds"
+  mm_timer_voice_cancel_desc: "Cancel the active timer"
+  mm_timer_voice_acknowledge_desc: "Acknowledge expired timer"
+  
+  # ############################################################################
+  # Home Assistant Entity Names & Descriptions
+  # ############################################################################
+  
+  mm_timer_ha_active_binary_sensor: "Echo Ear Timer Active"
+  mm_timer_ha_active_binary_sensor_desc: "Binary sensor indicating if timer is actively counting"
+  
+  mm_timer_ha_expired_binary_sensor: "Echo Ear Timer Expired"
+  mm_timer_ha_expired_binary_sensor_desc: "Binary sensor indicating if timer has expired"
+  
+  mm_timer_ha_remaining_sensor: "Echo Ear Timer Remaining"
+  mm_timer_ha_remaining_sensor_desc: "Number of seconds remaining on the timer"
+  
+  mm_timer_ha_duration_set_sensor: "Echo Ear Timer Duration Set"
+  mm_timer_ha_duration_set_sensor_desc: "The duration that was set for the current/last timer"
+  
+  mm_timer_ha_duration_setter: "Echo Ear Set Timer Duration"
+  mm_timer_ha_duration_setter_desc: "Set a new timer duration from Home Assistant"
+  
+  mm_timer_ha_cancel_button: "Echo Ear Cancel Timer"
+  mm_timer_ha_cancel_button_desc: "Cancel the active timer from Home Assistant"
+  
+  mm_timer_ha_acknowledge_button: "Echo Ear Acknowledge Timer"
+  mm_timer_ha_acknowledge_button_desc: "Acknowledge the expired timer from Home Assistant"
+  
+  # ############################################################################
+  # Module Metadata
+  # ############################################################################
+  
+  mm_timer_module_name: "Timer"
+  mm_timer_module_description: "Verbal countdown timer with expiry notification"
+  
+  # ############################################################################
+  # Display Page Descriptions
+  # ############################################################################
+  
+  mm_timer_page_countdown_desc: "Shows remaining time on countdown"
+  mm_timer_page_expired_desc: "Shows timer expired message"
+  
+  # ############################################################################
+  # LED State Descriptions
+  # ############################################################################
+  
+  mm_timer_led_active_desc: "Timer actively counting down"
+  mm_timer_led_expired_desc: "Timer expired, awaiting acknowledgement"
+  
+  # ############################################################################
+  # Audio Sound Descriptions
+  # ############################################################################
+  
+  mm_timer_audio_started_desc: "Confirmation beep when timer starts"
+  mm_timer_audio_alarm_desc: "Repeating alarm when timer expires"

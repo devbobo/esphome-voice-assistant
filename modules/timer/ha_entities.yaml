@@ -1,0 +1,68 @@
+################################################################################
+## Timer Module - Home Assistant Entities
+##
+## Exposes timer state and controls to Home Assistant.
+##   - Binary sensor: Timer is active / Timer is expired
+##   - Sensor: Remaining seconds
+##   - Number: Set duration (command interface)
+##   - Buttons: Cancel, Acknowledge
+################################################################################
+
+binary_sensor:
+  - platform: template
+    id: mm_timer_is_active_ha
+    name: "${mm_timer_ha_active_binary_sensor}"
+    lambda: return id(mm_timer_is_active);
+
+  - platform: template
+    id: mm_timer_is_expired_ha
+    name: "${mm_timer_ha_expired_binary_sensor}"
+    lambda: return id(mm_timer_is_expired);
+
+sensor:
+  - platform: template
+    id: mm_timer_remaining_seconds
+    name: "${mm_timer_ha_remaining_sensor}"
+    unit_of_measurement: "s"
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: |-
+      if (!id(mm_timer_is_active)) return 0.0;
+      uint32_t elapsed = (millis() - id(mm_timer_started_ms)) / 1000;
+      uint32_t remaining = id(mm_timer_duration_sec) > elapsed 
+        ? id(mm_timer_duration_sec) - elapsed 
+        : 0;
+      return (float)remaining;
+
+  - platform: template
+    id: mm_timer_duration_set_seconds
+    name: "${mm_timer_ha_duration_set_sensor}"
+    unit_of_measurement: "s"
+    accuracy_decimals: 0
+    lambda: return (float)id(mm_timer_duration_sec);
+
+number:
+  - platform: template
+    id: mm_timer_duration_setter
+    name: "${mm_timer_ha_duration_setter}"
+    min_value: 1
+    max_value: 3600
+    step: 1
+    unit_of_measurement: "s"
+    set_action:
+      - script.execute:
+          id: mm_timer_command_set
+          duration_sec: !lambda return (uint32_t)x;
+
+button:
+  - platform: template
+    id: mm_timer_button_cancel
+    name: "${mm_timer_ha_cancel_button}"
+    on_press:
+      - script.execute: mm_timer_command_cancel
+
+  - platform: template
+    id: mm_timer_button_acknowledge
+    name: "${mm_timer_ha_acknowledge_button}"
+    on_press:
+      - script.execute: mm_timer_command_acknowledge_expired

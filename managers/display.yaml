@@ -149,6 +149,45 @@ script:
             - "id(dm_last_system_event).c_str()"
             - "id(dm_last_touch_event).c_str()"
 
+      ########################################################################
+      ## Module Display Page Routing
+      ##
+      ## Modules declare display_pages in manifest.yaml with page IDs like
+      ## "module_timer:countdown". When dm_current_view matches, this router
+      ## extracts the module name and page, then calls mm_module_render_page.
+      ##
+      ## Pattern:
+      ##   dm_current_view = "module_timer:countdown"
+      ##   → Extract module "timer", page "countdown"
+      ##   → Call mm_timer_render_countdown()
+      ########################################################################
+      - if:
+          condition:
+            lambda: 'return id(dm_current_view).find("module_") == 0;'
+          then:
+            - logger.log:
+                format: "Display Manager: Routing module page '%s'"
+                args: ["id(dm_current_view).c_str()"]
+            - lambda: |-
+                // Extract module name and page ID from "module_timer:countdown"
+                std::string view = id(dm_current_view);
+                size_t colon_pos = view.find(":");
+                
+                if (colon_pos != std::string::npos) {
+                  std::string module_part = view.substr(7, colon_pos - 7);  // "timer"
+                  std::string page_part = view.substr(colon_pos + 1);        // "countdown"
+                  
+                  // Convert to handler name: mm_timer_render_countdown
+                  // TODO: Call handler if it exists
+                  // This would require dynamic script lookup, which ESPHome doesn't support.
+                  // Modules should implement these scripts with predictable names.
+                  
+                  ESP_LOGD("display", "Module: %s, Page: %s", 
+                           module_part.c_str(), page_part.c_str());
+                }
+            # Placeholder: Core module handlers will be called here
+            # See modules/MANIFEST_SYSTEM.md for implementation details
+
 interval:
   - interval: 250ms
     then:

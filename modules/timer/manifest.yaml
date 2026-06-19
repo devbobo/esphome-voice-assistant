@@ -1,0 +1,114 @@
+################################################################################
+## Timer Module - Manifest
+##
+## Declares all capabilities, integration points, and metadata.
+## Core managers read this at boot to discover and wire up the module.
+##
+## All descriptions use i18n substitutions for easy translation.
+## See i18n.yaml for the actual string values.
+################################################################################
+
+name: "${mm_timer_module_name}"
+description: "${mm_timer_module_description}"
+version: "1.0.0"
+
+voice_intents:
+  - intent_id: "timer_set_minutes"
+    description: "${mm_timer_voice_set_minutes_desc}"
+    handler_script: "mm_timer_voice_handler"
+    parameters:
+      - name: "minutes"
+        type: "int"
+        min: 1
+        max: 60
+
+  - intent_id: "timer_set_seconds"
+    description: "${mm_timer_voice_set_seconds_desc}"
+    handler_script: "mm_timer_voice_handler"
+    parameters:
+      - name: "seconds"
+        type: "int"
+        min: 1
+        max: 3600
+
+  - intent_id: "timer_cancel"
+    description: "${mm_timer_voice_cancel_desc}"
+    handler_script: "mm_timer_voice_handler"
+
+  - intent_id: "timer_acknowledge"
+    description: "${mm_timer_voice_acknowledge_desc}"
+    handler_script: "mm_timer_voice_handler"
+
+display_pages:
+  - page_id: "module_timer:countdown"
+    description: "${mm_timer_page_countdown_desc}"
+    render_script: "mm_timer_render_countdown"
+
+  - page_id: "module_timer:expired"
+    description: "${mm_timer_page_expired_desc}"
+    render_script: "mm_timer_render_expired"
+
+led_states:
+  - state_id: "timer_active"
+    description: "${mm_timer_led_active_desc}"
+    maps_to_led_event: "processing"
+
+  - state_id: "timer_expired"
+    description: "${mm_timer_led_expired_desc}"
+    maps_to_led_event: "error"
+
+audio_sounds:
+  - sound_id: "timer_started"
+    description: "${mm_timer_audio_started_desc}"
+    duration_ms: 500
+
+  - sound_id: "timer_alarm"
+    description: "${mm_timer_audio_alarm_desc}"
+    duration_ms: 2000
+    repeating: true
+
+ha_entities:
+  - entity_type: "binary_sensor"
+    entity_id: "mm_timer_is_active_ha"
+    name: "${mm_timer_ha_active_binary_sensor}"
+
+  - entity_type: "binary_sensor"
+    entity_id: "mm_timer_is_expired_ha"
+    name: "${mm_timer_ha_expired_binary_sensor}"
+
+  - entity_type: "sensor"
+    entity_id: "mm_timer_remaining_seconds"
+    name: "${mm_timer_ha_remaining_sensor}"
+    unit_of_measurement: "s"
+
+  - entity_type: "number"
+    entity_id: "mm_timer_duration_setter"
+    name: "${mm_timer_ha_duration_setter}"
+    unit_of_measurement: "s"
+    min: 1
+    max: 3600
+
+  - entity_type: "button"
+    entity_id: "mm_timer_button_cancel"
+    name: "${mm_timer_ha_cancel_button}"
+
+  - entity_type: "button"
+    entity_id: "mm_timer_button_acknowledge"
+    name: "${mm_timer_ha_acknowledge_button}"
+
+state_variables:
+  - name: "mm_timer_duration_sec"
+    type: "uint32_t"
+    description: "Total duration in seconds"
+
+  - name: "mm_timer_started_ms"
+    type: "uint32_t"
+    description: "System time when timer started"
+
+  - name: "mm_timer_is_active"
+    type: "bool"
+    description: "Whether timer is actively counting"
+
+  - name: "mm_timer_is_expired"
+    type: "bool"
+    description: "Whether timer has expired"

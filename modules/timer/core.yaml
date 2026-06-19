@@ -1,0 +1,138 @@
+################################################################################
+## Timer Module - Core State & Scripts
+##
+## Internal state management and core command handlers.
+## All timer state mutations happen here.
+##
+## State Variables (mm_timer_ prefix):
+##   - duration_sec: Total duration in seconds
+##   - started_ms: System time when timer was started
+##   - is_active: Whether timer is currently counting down
+##   - is_expired: Whether timer has finished counting down
+##
+## Core Scripts:
+##   - mm_timer_command_set: Start a new timer
+##   - mm_timer_command_cancel: Stop active timer
+##   - mm_timer_command_acknowledge_expired: Dismiss expired state
+##   - mm_timer_tick: Called every second to check expiry
+################################################################################
+
+globals:
+  - id: mm_timer_duration_sec
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+  - id: mm_timer_started_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+  - id: mm_timer_is_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+  - id: mm_timer_is_expired
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+script:
+  ################################################################################
+  ## Set Timer
+  ################################################################################
+  - id: mm_timer_command_set
+    mode: queued
+    parameters:
+      duration_sec: uint32_t
+    then:
+      - logger.log:
+          format: "Timer: Setting timer for %u seconds"
+          args: ["duration_sec"]
+      - lambda: |-
+          id(mm_timer_duration_sec) = duration_sec;
+          id(mm_timer_started_ms) = millis();
+          id(mm_timer_is_active) = true;
+          id(mm_timer_is_expired) = false;
+      # Trigger LED feedback for active timer
+      - event.trigger:
+          id: led_event
+          event_type: "processing"
+      # Queue confirmation sound
+      - script.execute:
+          id: audio_queue_sound
+          sound_key: "timer_started"
+      # Update display to show countdown
+      - lambda: |-
+          id(dm_current_view) = "module_timer:countdown";
+
+  ################################################################################
+  ## Cancel Timer
+  ################################################################################
+  - id: mm_timer_command_cancel
+    mode: queued
+    then:
+      - logger.log: "${mm_timer_log_cancelling_timer}"
+      - lambda: |-
+          id(mm_timer_is_active) = false;
+          id(mm_timer_is_expired) = false;
+          id(mm_timer_duration_sec) = 0;
+      - event.trigger:
+          id: led_event
+          event_type: "idle"
+      - lambda: |-
+          id(dm_current_view) = "page_0_idle";
+
+  ################################################################################
+  ## Acknowledge Expired
+  ################################################################################
+  - id: mm_timer_command_acknowledge_expired
+    mode: queued
+    then:
+      - logger.log: "${mm_timer_log_acknowledging_expired}"
+      - lambda: |-
+          id(mm_timer_is_expired) = false;
+          id(mm_timer_duration_sec) = 0;
+      - script.execute: audio_stop_sound
+      - event.trigger:
+          id: led_event
+          event_type: "idle"
+      - lambda: |-
+          id(dm_current_view) = "page_0_idle";
+
+  ################################################################################
+  ## Timer Tick - Check for expiry
+  ################################################################################
+  - id: mm_timer_tick
+    mode: queued
+    then:
+      - if:
+          condition:
+            lambda: "return id(mm_timer_is_active);"
+          then:
+            - lambda: |-
+                const uint32_t elapsed_sec = (millis() - id(mm_timer_started_ms)) / 1000;
+                const uint32_t total_sec = id(mm_timer_duration_sec);
+                if (elapsed_sec >= total_sec) {
+                  id(mm_timer_is_active) = false;
+                  id(mm_timer_is_expired) = true;
+                  ESP_LOGI("timer", "${mm_timer_log_timer_expired}");
+                }
+
+interval:
+  - interval: 1s
+    then:
+      - script.execute: mm_timer_tick
+      - if:
+          condition:
+            lambda: "return id(mm_timer_is_expired);"
+          then:
+            - script.execute:
+                id: audio_queue_sound
+                sound_key: "timer_alarm"
+            - event.trigger:
+                id: led_event
+                event_type: "error"
+            - lambda: |-
+                id(dm_current_view) = "module_timer:expired";

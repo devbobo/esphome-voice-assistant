@@ -1,0 +1,52 @@
+################################################################################
+## Timer Module - Display Integration
+##
+## Renders timer pages on the device display.
+## Entry points:
+##   - mm_timer_render_countdown: Show remaining time
+##   - mm_timer_render_expired: Show "Timer Expired" message
+##
+## Display manager will detect "module_timer:*" view keys and call these.
+################################################################################
+
+script:
+  ################################################################################
+  ## Render Countdown Page
+  ## 
+  ## Shows remaining time and prompt to cancel or wait.
+  ################################################################################
+  - id: mm_timer_render_countdown
+    then:
+      - logger.log: "${mm_timer_log_rendering_countdown}"
+      - lambda: |-
+          if (!id(mm_timer_is_active)) {
+            ESP_LOGW("timer", "Countdown render called but timer not active");
+            return;
+          }
+          
+          const uint32_t elapsed_ms = millis() - id(mm_timer_started_ms);
+          const uint32_t total_ms = id(mm_timer_duration_sec) * 1000;
+          const uint32_t remaining_ms = (elapsed_ms < total_ms) ? (total_ms - elapsed_ms) : 0;
+          const uint32_t remaining_sec = remaining_ms / 1000;
+          const uint32_t remaining_min = remaining_sec / 60;
+          const uint32_t remaining_s = remaining_sec % 60;
+          
+          ESP_LOGI("timer", "Display: %u:%02u remaining", remaining_min, remaining_s);
+          // TODO: Render on LVGL display
+          // - Show "Timer: M:SS" centered
+          // - Show "Say 'cancel' to stop" below
+
+  ################################################################################
+  ## Render Expired Page
+  ##
+  ## Shows "Timer Expired" and prompt to acknowledge.
+  ################################################################################
+  - id: mm_timer_render_expired
+    then:
+      - logger.log: "${mm_timer_log_rendering_expired}"
+      - lambda: |-
+          // TODO: Render on LVGL display
+          // - Show "Timer Expired" in large text
+          // - Show "Say 'stop' to acknowledge" below
+          // - Optional: Show time it was set for (mm_timer_duration_sec)
+          ESP_LOGI("timer", "Display: Timer Expired - awaiting acknowledgement");
