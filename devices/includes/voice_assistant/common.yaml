@@ -301,18 +301,6 @@ voice_assistant:
         id: system_event
         event_type: ${evt_va_tts_end}
 
-  on_tts_stream_start:
-    - logger.log: "Audio stream playback started"
-    - event.trigger:
-        id: system_event
-        event_type: ${evt_va_tts_stream_start}
-
-  on_tts_stream_end:
-    - logger.log: "Audio stream playback ended"
-    - event.trigger:
-        id: system_event
-        event_type: ${evt_va_tts_stream_end}
-
   on_idle:
     - logger.log: "Voice assistant idle"
     - event.trigger:
