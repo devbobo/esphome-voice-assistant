@@ -167,13 +167,29 @@ script:
       - logger.log:
           format: "Audio: Queue sound '%s'"
           args: ["sound_key.c_str()"]
-      # TODO: Implement sound queuing based on sound_key
-      # This is a stub that logs the request.
-      # Actual implementation depends on your audio system and available sounds.
+      
+      # Module sound routing
+      # Modules call this script with sound_key (e.g., "timer_started", "timer_alarm")
+      - if:
+          condition:
+            lambda: 'return sound_key == "timer_started";'
+          then:
+            - script.execute:
+                id: play_sound
+                priority: false
+                sound_file: !lambda return id(timer_started_sound);
+      
+      - if:
+          condition:
+            lambda: 'return sound_key == "timer_alarm";'
+          then:
+            - script.execute:
+                id: play_sound
+                priority: true
+                sound_file: !lambda return id(timer_alarm_sound);
 
   - id: audio_stop_sound
     mode: queued
     then:
       - logger.log: "Audio: Stop current sound"
-      # TODO: Implement sound stopping
-      # Stop currently playing announcement/sound from modules
+      - media_player.stop: va_media_player

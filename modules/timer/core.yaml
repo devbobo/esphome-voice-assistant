@@ -117,7 +117,7 @@ script:
                 if (elapsed_sec >= total_sec) {
                   id(mm_timer_is_active) = false;
                   id(mm_timer_is_expired) = true;
-                  ESP_LOGI("timer", "${mm_timer_log_timer_expired}");
+                  ESP_LOGI("timer", "Timer expired!");
                 }
 
 interval:

@@ -67,23 +67,8 @@ voice_assistant:
 
   on_end:
     # Voice intent routing for modules
-    # Modules declare their voice intents in manifest.yaml
-    # Pattern: intent ID starts with "{module_name}_*" routes to mm_{module_name}_voice_handler
     - lambda: |-
-        // TODO: Parse recognized intent from Home Assistant response
-        // For now, this is a stub. Real implementation would:
-        // 1. Extract intent_id from Home Assistant voice response
-        // 2. Parse intent parameters (minutes, seconds, etc.)
-        // 3. Route to appropriate module handler
-        
-        // Example routing logic (when implemented):
-        // if (intent_id.find("timer_") == 0) {
-        //   id(mm_timer_voice_handler).execute(intent_id, parameters);
-        // } else if (intent_id.find("weather_") == 0) {
-        //   id(mm_weather_voice_handler).execute(intent_id, parameters);
-        // }
-        
-        ESP_LOGD("voice", "Voice intent completed");
+        ESP_LOGD("voice", "Voice assistant cycle complete");
     
     - event.trigger:
         id: system_event

@@ -13,4 +13,5 @@ substitutions:
   # Audio file URLs (customize to use your own sounds)
   sound_startup: "${xiaozhi_sounds}/Home_Connected.flac"
   sound_wake_word: "${xiaozhi_sounds}/wake_word_triggered.flac"
-  sound_timer_finished: "${xiaozhi_sounds}/timer_finished.flac"
+  sound_timer_started: "${xiaozhi_sounds}/popup.flac"
+  sound_timer_alarm: "${xiaozhi_sounds}/timer_finished.flac"
