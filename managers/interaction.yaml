@@ -34,6 +34,7 @@ substitutions:
   istate_thinking:      "thinking"
   istate_replying:      "replying"
   istate_error:         "error"
+  interaction_listening_timeout_ms: "20000"
 
 globals:
   - id: canonical_interaction_state
@@ -41,6 +42,12 @@ globals:
     restore_value: no
     initial_value: '"${istate_not_connected}"'
     # Canonical interaction state; updated by interaction_state_handle_system_event
+
+  - id: canonical_interaction_state_since_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+    # Timestamp when canonical_interaction_state last changed
 
 script:
   ################################################################################
@@ -57,6 +64,7 @@ script:
       event_type: string
     then:
       - lambda: |-
+          const std::string prev = id(canonical_interaction_state);
           std::string next = id(canonical_interaction_state);
 
           if (event_type == "${evt_api_connected}"   ||
@@ -90,10 +98,41 @@ script:
           }
 
           id(canonical_interaction_state) = next;
+          if (next != prev) {
+            id(canonical_interaction_state_since_ms) = millis();
+          }
           ESP_LOGD("interaction", "Interaction state: %s", next.c_str());
       - event.trigger:
           id: interaction_state_changed
           event_type: !lambda return id(canonical_interaction_state);
+
+interval:
+  - interval: 1s
+    then:
+      - if:
+          condition:
+            lambda: |-
+              if (id(canonical_interaction_state) != "${istate_listening}") {
+                return false;
+              }
+              const uint32_t since = id(canonical_interaction_state_since_ms);
+              if (since == 0) {
+                return false;
+              }
+              return (millis() - since) >= ${interaction_listening_timeout_ms};
+          then:
+            - logger.log:
+                format: "Interaction timeout: listening exceeded %u ms, forcing idle"
+                args: ['(unsigned int) ${interaction_listening_timeout_ms}']
+            - event.trigger:
+                id: system_event
+                event_type: "${evt_wake_word_stop_requested}"
+            - lambda: |-
+                id(canonical_interaction_state) = "${istate_idle}";
+                id(canonical_interaction_state_since_ms) = millis();
+            - event.trigger:
+                id: interaction_state_changed
+                event_type: "${istate_idle}"
 
 ################################################################################
 ## Interaction State Changed Event
