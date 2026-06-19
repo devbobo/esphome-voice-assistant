@@ -11,6 +11,7 @@
 ##   - Implementation: Device-specific handlers consume led_event
 ##
 ## LED Ring States:
+##   - not_connected: Device is not connected to Home Assistant
 ##   - idle: Device ready but not listening
 ##   - listening: Wake feedback started or assistant is listening
 ##   - muted: Microphone disabled (solid red)
@@ -25,6 +26,7 @@
 
 substitutions:
   # LED Event Types (published by this manager)
+  led_event_not_connected: "not_connected"
   led_event_listening: "listening"
   led_event_muted: "muted"
   led_event_processing: "processing"
@@ -36,7 +38,7 @@ globals:
   - id: led_ring_state
     type: std::string
     restore_value: no
-    initial_value: '"idle"'
+    initial_value: '"not_connected"'
     # Canonical ring state shared by physical LED ring and virtual screen ring
 
 script:
@@ -134,14 +136,20 @@ script:
                 id: led_event
                 event_type: "${led_event_idle}"
 
-      # API disconnect / VA error -> error state
+      # API disconnected -> not connected state
       - if:
           condition:
-            lambda: >-
-              return std::set<std::string>{
-                "${evt_api_disconnected}",
-                "${evt_va_error}"
-              }.count(event_type) > 0;
+            lambda: 'return event_type == "${evt_api_disconnected}";'
+          then:
+            - logger.log: "LED: API disconnected - not connected"
+            - event.trigger:
+                id: led_event
+                event_type: "${led_event_not_connected}"
+
+      # Voice assistant error -> error state
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_va_error}";'
           then:
             - logger.log: "LED: Error state"
             - event.trigger:
@@ -170,6 +178,7 @@ event:
     name: "LED Ring Event"
     icon: "mdi:led-on"
     event_types:
+      - ${led_event_not_connected}
       - ${led_event_listening}
       - ${led_event_muted}
       - ${led_event_processing}
