@@ -3,10 +3,10 @@
 ##
 ## Central owner for display state and rendering intent.
 ## This manager is event-driven and receives:
-##   1) System events from event_router
+##   1) interaction_state_changed from the canonical interaction manager
 ##   2) Touchscreen gesture events from touchscreen manager
 ##
-## The manager currently tracks view/state and exposes render hooks.
+## The manager tracks view/state and exposes render hooks.
 ## Device-specific display implementations can consume these globals/scripts.
 ################################################################################
 

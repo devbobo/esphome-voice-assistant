@@ -30,7 +30,7 @@ base.yaml
   -> devices/<vendor>/<model>/device.yaml
   -> event_router.yaml
      -> managers/
-   -> interaction.yaml
+        -> interaction.yaml
         -> audio.yaml
         -> voice.yaml
         -> led_ring.yaml

@@ -135,6 +135,7 @@ interval:
             - event.trigger:
                 id: system_event
                 event_type: "${evt_wake_word_stop_requested}"
+            - voice_assistant.stop:
             - lambda: |-
                 const std::string next =
                   !id(api_client_connected) ? "${istate_not_connected}" :
