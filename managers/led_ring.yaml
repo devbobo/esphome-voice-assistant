@@ -51,115 +51,60 @@ globals:
 
 script:
   ################################################################################
-  ## LED State Manager Event Handler
+  ## LED Ring - Interaction State Handler
   ##
-  ## Called from event_router when system events occur.
-  ## Makes LED state decisions based on voice and audio events.
+  ## Called from interaction_state_changed event.
+  ## Translates canonical interaction state → led_event.
+  ## No system-event mapping here; that logic lives in interaction_state_manager.
   ################################################################################
-  - id: led_state_manager_handle_event
+  - id: led_ring_handle_interaction_state
     parameters:
-      event_type: string
+      interaction_state: string
     then:
       - logger.log:
-          format: "LED Manager: Received event %s"
-          args: ["event_type.c_str()"]
-
-      # Wake feedback started - enter listening mode in sync with the beep
+          format: "LED Ring: interaction state → %s"
+          args: ["interaction_state.c_str()"]
       - if:
           condition:
-            lambda: 'return event_type == "${evt_wake_acknowledged}";'
+            lambda: 'return interaction_state == "${istate_not_connected}";'
           then:
-            - logger.log: "LED: Wake acknowledged - entering listening"
-            - event.trigger:
-                id: led_event
-                event_type: "${led_event_listening}"
-
-      # Voice pipeline listening state
-      - if:
-          condition:
-            lambda: 'return event_type == "${evt_va_listening}";'
-          then:
-            - logger.log: "LED: Voice listening"
-            - event.trigger:
-                id: led_event
-                event_type: "${led_event_listening}"
-
-      # Voice thinking/processing
-      - if:
-          condition:
-            lambda: 'return event_type == "${evt_va_thinking}";'
-          then:
-            - logger.log: "LED: Voice processing"
-            - event.trigger:
-                id: led_event
-                event_type: "${led_event_processing}"
-
-      # Announcements/replies are treated as processing
-      - if:
-          condition:
-            lambda: 'return event_type == "${evt_announcement_started}";'
-          then:
-            - logger.log: "LED: Announcement started - processing"
-            - event.trigger:
-                id: led_event
-                event_type: "${led_event_processing}"
-
-      # Microphone muted
-      - if:
-          condition:
-            lambda: 'return event_type == "${evt_mic_muted}";'
-          then:
-            - logger.log: "LED: Microphone muted"
-            - event.trigger:
-                id: led_event
-                event_type: "${led_event_muted}"
-
-      # Microphone unmuted
-      - if:
-          condition:
-            lambda: 'return event_type == "${evt_mic_unmuted}";'
-          then:
-            - logger.log: "LED: Microphone unmuted - entering idle"
-            - event.trigger:
-                id: led_event
-                event_type: "${led_event_idle}"
-
-      # Voice complete
-      - if:
-          condition:
-            lambda: 'return event_type == "${evt_va_idle}";'
-          then:
-            - logger.log: "LED: Voice complete - returning to idle"
-            - event.trigger:
-                id: led_event
-                event_type: "${led_event_idle}"
-
-      # API connected
-      - if:
-          condition:
-            lambda: 'return event_type == "${evt_api_connected}";'
-          then:
-            - logger.log: "LED: API connected - entering idle"
-            - event.trigger:
-                id: led_event
-                event_type: "${led_event_idle}"
-
-      # API disconnected -> not connected state
-      - if:
-          condition:
-            lambda: 'return event_type == "${evt_api_disconnected}";'
-          then:
-            - logger.log: "LED: API disconnected - not connected"
             - event.trigger:
                 id: led_event
                 event_type: "${led_event_not_connected}"
-
-      # Voice assistant error -> error state
       - if:
           condition:
-            lambda: 'return event_type == "${evt_va_error}";'
+            lambda: 'return interaction_state == "${istate_idle}";'
           then:
-            - logger.log: "LED: Error state"
+            - event.trigger:
+                id: led_event
+                event_type: "${led_event_idle}"
+      - if:
+          condition:
+            lambda: 'return interaction_state == "${istate_muted}";'
+          then:
+            - event.trigger:
+                id: led_event
+                event_type: "${led_event_muted}"
+      - if:
+          condition:
+            lambda: 'return interaction_state == "${istate_listening}";'
+          then:
+            - event.trigger:
+                id: led_event
+                event_type: "${led_event_listening}"
+      - if:
+          condition:
+            lambda: |-
+              return interaction_state == "${istate_thinking}" ||
+                     interaction_state == "${istate_replying}";
+          then:
+            - event.trigger:
+                id: led_event
+                event_type: "${led_event_processing}"
+      - if:
+          condition:
+            lambda: 'return interaction_state == "${istate_error}";'
+          then:
             - event.trigger:
                 id: led_event
                 event_type: "${led_event_error}"

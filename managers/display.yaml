@@ -79,63 +79,21 @@ script:
 
           id(dm_current_view) = "page_" + to_string(id(dm_page_index)) + "_" + id(dm_assistant_state);
 
-  - id: display_manager_handle_system_event
+  ################################################################################
+  ## Display Manager - Interaction State Handler
+  ##
+  ## Called from interaction_state_changed event.
+  ## Sets dm_assistant_state directly from canonical state and triggers render.
+  ## No system-event mapping here; that logic lives in interaction_state_manager.
+  ################################################################################
+  - id: display_manager_handle_interaction_state
     mode: queued
     parameters:
-      event_type: string
+      interaction_state: string
     then:
-      - lambda: id(dm_last_system_event) = event_type;
-
-      - if:
-          condition:
-            lambda: >-
-              return std::set<std::string>{
-                "${evt_api_disconnected}",
-                "${evt_va_error}"
-              }.count(event_type) > 0;
-          then:
-            - lambda: id(dm_assistant_state) = "error";
-
-      - if:
-          condition:
-            lambda: >-
-              return std::set<std::string>{
-                "${evt_wake_acknowledged}",
-                "${evt_va_listening}"
-              }.count(event_type) > 0;
-          then:
-            - lambda: id(dm_assistant_state) = "listening";
-
-      - if:
-          condition:
-            lambda: >-
-              return std::set<std::string>{
-                "${evt_va_thinking}"
-              }.count(event_type) > 0;
-          then:
-            - lambda: id(dm_assistant_state) = "thinking";
-
-      - if:
-          condition:
-            lambda: >-
-              return std::set<std::string>{
-                "${evt_va_replying}",
-                "${evt_announcement_started}"
-              }.count(event_type) > 0;
-          then:
-            - lambda: id(dm_assistant_state) = "replying";
-
-      - if:
-          condition:
-            lambda: >-
-              return std::set<std::string>{
-                "${evt_va_idle}",
-                "${evt_audio_ready}",
-                "${evt_api_connected}"
-              }.count(event_type) > 0;
-          then:
-            - lambda: id(dm_assistant_state) = "idle";
-
+      - lambda: |-
+          id(dm_last_system_event) = interaction_state;
+          id(dm_assistant_state) = interaction_state;
       - script.execute: display_manager_recompute_view
       - script.execute: display_manager_render
 
