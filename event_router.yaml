@@ -35,8 +35,6 @@
 ##   - voice_assist_thinking:        Processing STT/intent (generic)
 ##   - voice_assist_replying:        TTS started (response being generated)
 ##   - voice_assist_tts_end:         Text-to-speech complete
-##   - voice_assist_tts_stream_start: Audio playback started
-##   - voice_assist_tts_stream_end:  Audio playback ended
 ##   - voice_assist_idle:        Voice assistant session ended (on_end fired)
 ##   - voice_assist_error:       Voice assistant encountered an error
 ##   - voice_assist_client_connected: HA API connected
@@ -81,8 +79,6 @@ substitutions:
   evt_va_intent_end:              "voice_assist_intent_end"
   evt_va_tts_start:               "voice_assist_tts_start"
   evt_va_tts_end:                 "voice_assist_tts_end"
-  evt_va_tts_stream_start:        "voice_assist_tts_stream_start"
-  evt_va_tts_stream_end:          "voice_assist_tts_stream_end"
   evt_va_error:                   "voice_assist_error"
   evt_va_client_connected:        "voice_assist_client_connected"
   evt_va_client_disconnected:     "voice_assist_client_disconnected"
@@ -124,11 +120,27 @@ event:
       - ${evt_mic_unmuted}
       - ${evt_audio_ready}
       - ${evt_va_idle}
+      - ${evt_va_start}
       - ${evt_va_wake_word_detected}
       - ${evt_va_listening}
+      - ${evt_va_stt_vad_start}
       - ${evt_va_stt_vad_end}
+      - ${evt_va_stt_end}
+      - ${evt_va_intent_start}
+      - ${evt_va_intent_progress}
+      - ${evt_va_intent_end}
       - ${evt_va_tts_start}
+      - ${evt_va_tts_end}
       - ${evt_va_error}
+      - ${evt_va_client_connected}
+      - ${evt_va_client_disconnected}
+      - ${evt_va_timer_started}
+      - ${evt_va_timer_updated}
+      - ${evt_va_timer_tick}
+      - ${evt_va_timer_finished}
+      - ${evt_va_timer_cancelled}
+      - ${evt_wake_word_stop_requested}
+      - ${evt_wake_word_location_changed}
     on_event:
       - logger.log:
           format: "System Event: %s"
