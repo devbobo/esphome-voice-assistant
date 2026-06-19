@@ -154,26 +154,26 @@ script:
       ##
       ## Modules declare display_pages in manifest.yaml with page IDs like
       ## "module_timer:countdown". When dm_current_view matches, this router
-      ## extracts the module name and page, then calls mm_module_render_page.
+      ## extracts the module name and page, then calls module_render_page.
       ##
       ## Pattern:
       ##   dm_current_view = "module_timer:countdown"
       ##   → Extract module "timer", page "countdown"
-      ##   → Call mm_timer_render_countdown()
+      ##   → Call timer_render_countdown()
       ########################################################################
       # Module display page routing
-      # When dm_current_view is "module_timer:countdown", call mm_timer_render_countdown
+      # When dm_current_view is "module_timer:countdown", call timer_render_countdown
       - if:
           condition:
             lambda: 'return id(dm_current_view) == "module_timer:countdown";'
           then:
-            - script.execute: mm_timer_render_countdown
+            - script.execute: timer_render_countdown
       
       - if:
           condition:
             lambda: 'return id(dm_current_view) == "module_timer:expired";'
           then:
-            - script.execute: mm_timer_render_expired
+            - script.execute: timer_render_expired
 
 interval:
   - interval: 250ms

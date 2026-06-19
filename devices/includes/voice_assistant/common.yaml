@@ -16,36 +16,36 @@
 
 globals:
   # Timer state for primary active timer (used for display/HA entities)
-  - id: mm_timer_active_id
+  - id: timer_active_id
     type: std::string
     restore_value: no
     initial_value: '""'
 
-  - id: mm_timer_active_name
+  - id: timer_active_name
     type: std::string
     restore_value: no
     initial_value: '""'
 
-  - id: mm_timer_seconds_remaining
+  - id: timer_seconds_remaining
     type: uint32_t
     restore_value: no
     initial_value: "0"
 
   # Multi-timer support: track first active and first timer
-  - id: mm_timer_first_active
+  - id: timer_first_active
     type: esphome::voice_assistant::Timer
     restore_value: no
 
-  - id: mm_timer_first
+  - id: timer_first
     type: esphome::voice_assistant::Timer
     restore_value: no
 
-  - id: mm_timer_has_active
+  - id: timer_has_active
     type: bool
     restore_value: no
     initial_value: "false"
 
-  - id: mm_timer_has_any
+  - id: timer_has_any
     type: bool
     restore_value: no
     initial_value: "false"
@@ -54,7 +54,7 @@ script:
   ################################################################################
   ## Timer State & Management Scripts
   ################################################################################
-  - id: mm_timer_fetch_first_active
+  - id: timer_fetch_first_active
     then:
       - lambda: |-
           const auto &timers = id(va).get_timers();
@@ -65,9 +65,9 @@ script:
               output_timer = timer;
             }
           }
-          id(mm_timer_first_active) = output_timer;
+          id(timer_first_active) = output_timer;
 
-  - id: mm_timer_check_has_active
+  - id: timer_check_has_active
     then:
       - lambda: |-
           const auto &timers = id(va).get_timers();
@@ -78,9 +78,9 @@ script:
               break;
             }
           }
-          id(mm_timer_has_active) = has_active;
+          id(timer_has_active) = has_active;
 
-  - id: mm_timer_fetch_first
+  - id: timer_fetch_first
     then:
       - lambda: |-
           const auto &timers = id(va).get_timers();
@@ -91,39 +91,39 @@ script:
               output_timer = timer;
             }
           }
-          id(mm_timer_first) = output_timer;
+          id(timer_first) = output_timer;
 
-  - id: mm_timer_check_has_any
+  - id: timer_check_has_any
     then:
       - lambda: |-
           const auto &timers = id(va).get_timers();
-          id(mm_timer_has_any) = !timers.empty();
+          id(timer_has_any) = !timers.empty();
 
   ################################################################################
   ## Timer Display Rendering
   ################################################################################
-  - id: mm_timer_render_countdown
+  - id: timer_render_countdown
     then:
       - logger.log: "Rendering timer countdown"
       - lambda: |-
-          id(mm_timer_check_has_active).execute();
-          if (!id(mm_timer_has_active)) {
+          id(timer_check_has_active).execute();
+          if (!id(timer_has_active)) {
             ESP_LOGW("timer", "Countdown render called but no active timer");
             return;
           }
-          id(mm_timer_fetch_first_active).execute();
-          const uint32_t remaining_sec = id(mm_timer_first_active).seconds_left;
+          id(timer_fetch_first_active).execute();
+          const uint32_t remaining_sec = id(timer_first_active).seconds_left;
           const uint32_t remaining_min = remaining_sec / 60;
           const uint32_t remaining_s = remaining_sec % 60;
           ESP_LOGI("timer", "Display: %u:%02u remaining (primary timer)", remaining_min, remaining_s);
 
-  - id: mm_timer_render_expired
+  - id: timer_render_expired
     then:
       - logger.log: "Rendering timer expired"
       - lambda: |-
           ESP_LOGI("timer", "Display: Timer Expired");
 
-  - id: mm_microphone_stop_listening
+  - id: microphone_stop_listening
     then:
       - event.trigger:
           id: system_event
@@ -150,28 +150,28 @@ script:
 
 binary_sensor:
   - platform: template
-    id: mm_timer_is_active_ha
+    id: timer_is_active_ha
     name: "Timer Active"
     lambda: |-
-      return id(mm_timer_has_active);
+      return id(timer_has_active);
 
 sensor:
   - platform: template
-    id: mm_timer_remaining_seconds
+    id: timer_remaining_seconds
     name: "Timer Remaining"
     unit_of_measurement: "s"
     accuracy_decimals: 0
     update_interval: 1s
     lambda: |-
-      id(mm_timer_check_has_active).execute();
-      if (id(mm_timer_has_active)) {
-        id(mm_timer_fetch_first_active).execute();
-        return (float)id(mm_timer_first_active).seconds_left;
+      id(timer_check_has_active).execute();
+      if (id(timer_has_active)) {
+        id(timer_fetch_first_active).execute();
+        return (float)id(timer_first_active).seconds_left;
       }
       return 0.0f;
 
   - platform: template
-    id: mm_timer_count_all
+    id: timer_count_all
     name: "Total Timers"
     unit_of_measurement: "timers"
     accuracy_decimals: 0
@@ -180,7 +180,7 @@ sensor:
       return (float)id(va).get_timers().size();
 
   - platform: template
-    id: mm_timer_count_active
+    id: timer_count_active
     name: "Active Timers"
     unit_of_measurement: "timers"
     accuracy_decimals: 0
@@ -194,14 +194,14 @@ sensor:
 
 text_sensor:
   - platform: template
-    id: mm_timer_name
+    id: timer_name
     name: "Timer Name"
     lambda: |-
-      return id(mm_timer_active_name);
+      return id(timer_active_name);
 
 button:
   - platform: template
-    id: mm_timer_button_cancel
+    id: timer_button_cancel
     name: "Cancel Timer"
     on_press:
       - logger.log: "Cancel timer button pressed"
@@ -214,7 +214,7 @@ micro_wake_word:
     - hey_jarvis
     - alexa
   on_wake_word_detected:
-    - script.execute: mm_microphone_stop_listening
+    - script.execute: microphone_stop_listening
     - event.trigger:
         id: system_event
         event_type: "${evt_va_wake_word_detected}"
@@ -336,13 +336,13 @@ voice_assistant:
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_started}"
-    - script.execute: mm_timer_check_has_active
-    - script.execute: mm_timer_fetch_first_active
+    - script.execute: timer_check_has_active
+    - script.execute: timer_fetch_first_active
     - lambda: |-
-        id(mm_timer_active_id) = id(mm_timer_first_active).id;
-        id(mm_timer_active_name) = id(mm_timer_first_active).name;
-        id(mm_timer_seconds_remaining) = id(mm_timer_first_active).seconds_left;
-        ESP_LOGI("timer", "Timer started: %s (%.0f active timers)", id(mm_timer_active_name).c_str(), (float)id(va).get_timers().size());
+        id(timer_active_id) = id(timer_first_active).id;
+        id(timer_active_name) = id(timer_first_active).name;
+        id(timer_seconds_remaining) = id(timer_first_active).seconds_left;
+        ESP_LOGI("timer", "Timer started: %s (%.0f active timers)", id(timer_active_name).c_str(), (float)id(va).get_timers().size());
     - event.trigger:
         id: led_event
         event_type: "processing"
@@ -357,37 +357,37 @@ voice_assistant:
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_updated}"
-    - script.execute: mm_timer_check_has_active
-    - script.execute: mm_timer_fetch_first_active
+    - script.execute: timer_check_has_active
+    - script.execute: timer_fetch_first_active
     - lambda: |-
-        id(mm_timer_active_id) = id(mm_timer_first_active).id;
-        id(mm_timer_active_name) = id(mm_timer_first_active).name;
-        id(mm_timer_seconds_remaining) = id(mm_timer_first_active).seconds_left;
+        id(timer_active_id) = id(timer_first_active).id;
+        id(timer_active_name) = id(timer_first_active).name;
+        id(timer_seconds_remaining) = id(timer_first_active).seconds_left;
 
   on_timer_tick:
     - logger.log: "Timer tick"
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_tick}"
-    - script.execute: mm_timer_check_has_active
-    - script.execute: mm_timer_fetch_first_active
+    - script.execute: timer_check_has_active
+    - script.execute: timer_fetch_first_active
     - lambda: |-
-        id(mm_timer_seconds_remaining) = id(mm_timer_first_active).seconds_left;
+        id(timer_seconds_remaining) = id(timer_first_active).seconds_left;
 
   on_timer_finished:
     - logger.log: "Timer finished"
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_finished}"
-    - script.execute: mm_timer_check_has_active
-    - script.execute: mm_timer_fetch_first_active
+    - script.execute: timer_check_has_active
+    - script.execute: timer_fetch_first_active
     - lambda: |-
-        ESP_LOGI("timer", "Timer finished: %s (%.0f active timers remaining)", id(mm_timer_first_active).name.c_str(), (float)id(va).get_timers().size());
+        ESP_LOGI("timer", "Timer finished: %s (%.0f active timers remaining)", id(timer_first_active).name.c_str(), (float)id(va).get_timers().size());
     - event.trigger:
         id: led_event
         event_type: "error"
     # Stop listening before playing alarm sound (frees I2S bus)
-    - script.execute: mm_microphone_stop_listening
+    - script.execute: microphone_stop_listening
     - script.execute:
         id: audio_queue_sound
         sound_key: "timer_alarm"
@@ -399,23 +399,23 @@ voice_assistant:
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_cancelled}"
-    - script.execute: mm_timer_check_has_active
+    - script.execute: timer_check_has_active
     - if:
         condition:
           lambda: |-
-            return id(mm_timer_has_active);
+            return id(timer_has_active);
         then:
-          - script.execute: mm_timer_fetch_first_active
+          - script.execute: timer_fetch_first_active
           - lambda: |-
-              id(mm_timer_active_id) = id(mm_timer_first_active).id;
-              id(mm_timer_active_name) = id(mm_timer_first_active).name;
-              id(mm_timer_seconds_remaining) = id(mm_timer_first_active).seconds_left;
-              ESP_LOGI("timer", "Timer cancelled, now showing: %s", id(mm_timer_active_name).c_str());
+              id(timer_active_id) = id(timer_first_active).id;
+              id(timer_active_name) = id(timer_first_active).name;
+              id(timer_seconds_remaining) = id(timer_first_active).seconds_left;
+              ESP_LOGI("timer", "Timer cancelled, now showing: %s", id(timer_active_name).c_str());
         else:
           - lambda: |-
-              id(mm_timer_active_id) = "";
-              id(mm_timer_active_name) = "";
-              id(mm_timer_seconds_remaining) = 0;
+              id(timer_active_id) = "";
+              id(timer_active_name) = "";
+              id(timer_seconds_remaining) = 0;
               ESP_LOGI("timer", "Last timer cancelled");
           - event.trigger:
               id: led_event
