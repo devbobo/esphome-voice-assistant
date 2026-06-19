@@ -118,6 +118,7 @@ script:
           args: ["event_type.c_str()"]
 
   - id: play_sound
+    mode: queued
     parameters:
       priority: bool
       sound_file: "audio::AudioFile*"
