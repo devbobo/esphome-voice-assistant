@@ -143,6 +143,7 @@ script:
       - delay: 200ms
 
   - id: timer_play_looping_alarm
+    mode: restart
     then:
       - logger.log: "Timer alarm: Starting looping playback"
       - lambda: |-
@@ -151,10 +152,16 @@ script:
           condition:
             lambda: 'return id(timer_alarm_active);'
           then:
-            - script.execute:
-                id: audio_queue_sound
-                sound_key: "timer_alarm"
-            - delay: 500ms
+            # Queue alarm sound without waiting for playback to complete
+            - if:
+                condition:
+                  lambda: 'return id(timer_alarm_active);'
+                then:
+                  - script.execute:
+                      id: audio_queue_sound
+                      sound_key: "timer_alarm"
+            # Check condition frequently instead of waiting for sound
+            - delay: 100ms
       - logger.log: "Timer alarm: Looping playback stopped"
 
   - id: timer_stop_looping_alarm
@@ -162,6 +169,9 @@ script:
       - logger.log: "Timer alarm: Acknowledging alarm"
       - lambda: |-
           id(timer_alarm_active) = false;
+      # Immediately stop speaker
+      - media_player.stop:
+          id: va_media_player
       - script.execute: audio_stop_sound
 
   - id: toggle_voice_assistant
