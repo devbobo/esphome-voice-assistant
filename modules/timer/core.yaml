@@ -60,6 +60,7 @@ script:
           id(mm_timer_started_ms) = millis();
           id(mm_timer_is_active) = true;
           id(mm_timer_is_expired) = false;
+          id(mm_timer_alarm_queued) = false;
       # Trigger LED feedback for active timer
       - event.trigger:
           id: led_event
