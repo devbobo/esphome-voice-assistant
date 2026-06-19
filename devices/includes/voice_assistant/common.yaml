@@ -183,6 +183,20 @@ script:
           id: va_media_player
       - script.execute: audio_stop_sound
 
+  - id: timer_cancel_active
+    then:
+      - logger.log: "Timer cancel: Attempting to cancel active timer"
+      - lambda: |-
+          id(timer_fetch_first_active).execute();
+          if (id(timer_first_active).id.length() > 0) {
+            ESP_LOGI("timer", "Cancelling active timer: %s", id(timer_first_active).id.c_str());
+            id(va).cancel_timer(id(timer_first_active).id);
+          } else {
+            ESP_LOGW("timer", "No active timer to cancel");
+          }
+      # Also stop alarm if it's playing
+      - script.execute: timer_stop_looping_alarm
+
   - id: toggle_voice_assistant
     then:
       - media_player.stop:
@@ -253,7 +267,7 @@ button:
     name: "Cancel Timer"
     on_press:
       - logger.log: "Cancel timer button pressed"
-      - script.execute: timer_stop_looping_alarm
+      - script.execute: timer_cancel_active
       - voice_assistant.stop:
 
 micro_wake_word:
