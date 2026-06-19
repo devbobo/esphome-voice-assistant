@@ -96,7 +96,7 @@ select:
     on_value:
       - event.trigger:
           id: system_event
-          event_type: "wake_word_location_changed"
+          event_type: "${evt_wake_word_location_changed}"
 
 switch:
   - platform: template

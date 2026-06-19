@@ -92,7 +92,7 @@ script:
       interaction_state: string
     then:
       - lambda: |-
-          id(dm_last_system_event) = interaction_state;
+          id(dm_last_system_event) = "interaction:" + interaction_state;
           id(dm_assistant_state) = interaction_state;
       - script.execute: display_manager_recompute_view
       - script.execute: display_manager_render
