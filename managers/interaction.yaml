@@ -49,6 +49,15 @@ globals:
     initial_value: "0"
     # Timestamp when canonical_interaction_state last changed
 
+esphome:
+  on_boot:
+    - priority: -100
+      then:
+        - delay: 500ms
+        - event.trigger:
+            id: interaction_state_changed
+            event_type: !lambda return id(canonical_interaction_state);
+
 script:
   ################################################################################
   ## Interaction State - System Event Handler
