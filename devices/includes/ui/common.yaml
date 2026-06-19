@@ -23,7 +23,7 @@ lvgl:
           height: ${ring_height}
           radius: !lambda return ${ring_height} / 2;
           border_width: 0
-          bg_color: 0x343D52
+          bg_color: 0x8B6A2A
       - obj:
           id: ui_ring_inner
           x: !lambda return ${ring_thickness};
