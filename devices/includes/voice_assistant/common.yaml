@@ -50,6 +50,13 @@ globals:
     restore_value: no
     initial_value: "false"
 
+  # Alarm state tracking
+  - id: timer_alarm_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+    # Tracks if alarm is currently playing (loops until user acknowledges)
+
 script:
   ################################################################################
   ## Timer State & Management Scripts
@@ -135,6 +142,28 @@ script:
           timeout: 3s
       - delay: 200ms
 
+  - id: timer_play_looping_alarm
+    then:
+      - logger.log: "Timer alarm: Starting looping playback"
+      - lambda: |-
+          id(timer_alarm_active) = true;
+      - while:
+          condition:
+            lambda: 'return id(timer_alarm_active);'
+          then:
+            - script.execute:
+                id: audio_queue_sound
+                sound_key: "timer_alarm"
+            - delay: 500ms
+      - logger.log: "Timer alarm: Looping playback stopped"
+
+  - id: timer_stop_looping_alarm
+    then:
+      - logger.log: "Timer alarm: Acknowledging alarm"
+      - lambda: |-
+          id(timer_alarm_active) = false;
+      - script.execute: audio_stop_sound
+
   - id: toggle_voice_assistant
     then:
       - media_player.stop:
@@ -205,6 +234,7 @@ button:
     name: "Cancel Timer"
     on_press:
       - logger.log: "Cancel timer button pressed"
+      - script.execute: timer_stop_looping_alarm
       - voice_assistant.stop:
 
 micro_wake_word:
@@ -388,14 +418,14 @@ voice_assistant:
         event_type: "error"
     # Stop listening before playing alarm sound (frees I2S bus)
     - script.execute: microphone_stop_listening
-    - script.execute:
-        id: audio_queue_sound
-        sound_key: "timer_alarm"
+    # Start looping alarm that continues until user acknowledges
+    - script.execute: timer_play_looping_alarm
     - lambda: |-
         id(dm_current_view) = "module_timer:expired";
 
   on_timer_cancelled:
     - logger.log: "Timer cancelled"
+    - script.execute: timer_stop_looping_alarm
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_cancelled}"
