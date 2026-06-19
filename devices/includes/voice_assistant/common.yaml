@@ -50,13 +50,6 @@ globals:
     restore_value: no
     initial_value: "false"
 
-  # Alarm state tracking
-  - id: timer_alarm_active
-    type: bool
-    restore_value: no
-    initial_value: "false"
-    # Tracks if alarm is currently playing (loops until user acknowledges)
-
 script:
   ################################################################################
   ## Timer State & Management Scripts
@@ -142,61 +135,6 @@ script:
           timeout: 3s
       - delay: 200ms
 
-  - id: timer_queue_alarm_if_active
-    then:
-      # Only queue the sound if alarm is still active
-      # Prevents queued tasks from playing after button is pressed
-      - if:
-          condition:
-            lambda: 'return id(timer_alarm_active);'
-          then:
-            - script.execute:
-                id: audio_queue_sound
-                sound_key: "timer_alarm"
-          else:
-            - logger.log: "Timer alarm: Queued sound skipped (alarm stopped)"
-
-  - id: timer_play_looping_alarm
-    mode: restart
-    then:
-      - logger.log: "Timer alarm: Starting looping playback"
-      - lambda: |-
-          id(timer_alarm_active) = true;
-      - while:
-          condition:
-            lambda: 'return id(timer_alarm_active);'
-          then:
-            # Use guard script that checks flag before queuing
-            - script.execute: timer_queue_alarm_if_active
-            # Short delay for responsive stopping
-            - delay: 50ms
-      - logger.log: "Timer alarm: Looping playback stopped"
-
-  - id: timer_stop_looping_alarm
-    mode: restart
-    then:
-      - logger.log: "Timer alarm: Acknowledging alarm"
-      - lambda: |-
-          id(timer_alarm_active) = false;
-      # Immediately stop speaker
-      - media_player.stop:
-          id: va_media_player
-      - script.execute: audio_stop_sound
-
-  - id: timer_cancel_active
-    then:
-      - logger.log: "Timer cancel: Attempting to cancel active timer"
-      - lambda: |-
-          id(timer_fetch_first_active).execute();
-          if (id(timer_first_active).id.length() > 0) {
-            ESP_LOGI("timer", "Cancelling active timer: %s", id(timer_first_active).id.c_str());
-            id(va).cancel_timer(id(timer_first_active).id);
-          } else {
-            ESP_LOGW("timer", "No active timer to cancel");
-          }
-      # Also stop alarm if it's playing
-      - script.execute: timer_stop_looping_alarm
-
   - id: toggle_voice_assistant
     then:
       - media_player.stop:
@@ -267,8 +205,41 @@ button:
     name: "Cancel Timer"
     on_press:
       - logger.log: "Cancel timer button pressed"
-      - script.execute: timer_cancel_active
+      - switch.turn_off: timer_ringing
       - voice_assistant.stop:
+
+switch:
+  - platform: template
+    id: timer_ringing
+    name: "Timer Ringing"
+    optimistic: true
+    internal: true
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - logger.log: "Timer ringing: Starting alarm with native loop"
+      # Play alarm sound
+      - script.execute:
+          id: audio_queue_sound
+          sound_key: "timer_alarm"
+      # Wait until media is announcing to enable loop (responsiveness check)
+      - wait_until:
+          condition:
+            media_player.is_announcing:
+      # Enable native media player looping for continuous playback
+      - lambda: |-
+          id(va_media_player)->set_repeat_all(true);
+      # Auto-stop after 15 minutes as failsafe
+      - delay: 15min
+      - switch.turn_off: timer_ringing
+    on_turn_off:
+      - logger.log: "Timer ringing: Stopping alarm"
+      # Disable looping immediately
+      - lambda: |-
+          id(va_media_player)->set_repeat_all(false);
+      # Stop playback
+      - media_player.stop:
+          id: va_media_player
+      - script.execute: audio_stop_sound
 
 micro_wake_word:
   id: mww
@@ -462,14 +433,14 @@ voice_assistant:
             return std::string("${i2s_shared_bus}") == "true";
         then:
           - script.execute: microphone_stop_listening
-    # Start looping alarm that continues until user acknowledges
-    - script.execute: timer_play_looping_alarm
+    # Start looping alarm using native media player repeat (responsive to button stops)
+    - switch.turn_on: timer_ringing
     - lambda: |-
         id(dm_current_view) = "module_timer:expired";
 
   on_timer_cancelled:
     - logger.log: "Timer cancelled"
-    - script.execute: timer_stop_looping_alarm
+    - switch.turn_off: timer_ringing
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_cancelled}"
