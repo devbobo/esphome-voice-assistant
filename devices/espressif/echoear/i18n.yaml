@@ -7,8 +7,6 @@ substitutions:
   # Device identity (EchoEar-specific)
   device_model: "EchoEar"
 
-  led_ring_state_handler: !include handlers/led_ring.yaml
-
   # Touch pads (EchoEar-specific)
   label_back_touch_pad: "Back Touch Pad"
   label_head_touch_pad: "Head Touch Pad"
