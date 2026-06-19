@@ -21,8 +21,8 @@ micro_wake_word:
         timeout: 3s
     - delay: 200ms
     - event.trigger:
-      id: system_event
-      event_type: "${evt_wake_acknowledged}"
+        id: system_event
+        event_type: "${evt_wake_acknowledged}"
     - if:
         condition:
           switch.is_on: wake_sound
