@@ -464,6 +464,9 @@ switch:
     optimistic: true
     restore_mode: RESTORE_DEFAULT_OFF
     on_turn_off:
+      - script.execute:
+          id: audio_queue_sound
+          sound_key: "mute_on"
       - microphone.stop_capture:
           id: va_microphone
       - voice_assistant.stop:
@@ -471,6 +474,9 @@ switch:
           id: system_event
           event_type: ${evt_mic_muted}
     on_turn_on:
+      - script.execute:
+          id: audio_queue_sound
+          sound_key: "mute_off"
       - event.trigger:
           id: system_event
           event_type: ${evt_mic_unmuted}

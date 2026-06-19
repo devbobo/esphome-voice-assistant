@@ -11,3 +11,7 @@
   file: ${sound_timer_started}
 - id: timer_alarm_sound
   file: ${sound_timer_alarm}
+- id: mute_on_sound
+  file: ${sound_mute_on}
+- id: mute_off_sound
+  file: ${sound_mute_off}

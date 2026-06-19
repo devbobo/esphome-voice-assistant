@@ -9,6 +9,10 @@ This root README is the setup and usage guide. For deep implementation details, 
 
 This project is based on the original work by **RealDeco** at [xiaozhi-esphome](https://github.com/RealDeco/xiaozhi-esphome/). The original monolithic configuration has been refactored into a modular architecture.
 
+### Audio Credits
+
+This project uses sounds from the [Home Assistant Voice Preview Edition](https://github.com/esphome/home-assistant-voice-pe) © 2024 by [Clayton Charles Tapp](https://www.cctaudio.com/), licensed under [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/).
+
 ## What This Project Provides
 
 - Modular structure separating shared logic from device-specific hardware

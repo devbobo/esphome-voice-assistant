@@ -188,6 +188,24 @@ script:
                 id: play_sound
                 priority: true
                 sound_file: !lambda return id(timer_alarm_sound);
+      
+      - if:
+          condition:
+            lambda: 'return sound_key == "mute_on";'
+          then:
+            - script.execute:
+                id: play_sound
+                priority: false
+                sound_file: !lambda return id(mute_on_sound);
+      
+      - if:
+          condition:
+            lambda: 'return sound_key == "mute_off";'
+          then:
+            - script.execute:
+                id: play_sound
+                priority: false
+                sound_file: !lambda return id(mute_off_sound);
 
   - id: audio_stop_sound
     mode: queued

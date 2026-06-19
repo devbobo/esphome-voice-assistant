@@ -2,16 +2,20 @@
 ## Centralized configuration values loaded at project level
 substitutions:
   xiaozhi: "https://github.com/RealDeco/xiaozhi-esphome"
+  ohf_voice: "https://github.com/OHF-Voice/apps/raw/main/assist_satellite"
 
   # Default no-op LED state handler. Device packages can override this
   # (e.g. EchoEar uses devices/espressif/echoear/handlers/led_ring.yaml).
   led_ring_state_handler: !include devices/includes/led_ring/noop_state_handler.yaml
   
-  # Audio feedback sounds base URL
+  # Audio feedback sounds base URLs
   xiaozhi_sounds: "${xiaozhi}/raw/main/sounds"
+  ohf_sounds: "${ohf_voice}/sounds"
 
   # Audio file URLs (customize to use your own sounds)
   sound_startup: "${xiaozhi_sounds}/Home_Connected.flac"
-  sound_wake_word: "${xiaozhi_sounds}/wake_word_triggered.flac"
+  sound_wake_word: "${ohf_sounds}/wake_word_triggered.flac"
   sound_timer_started: "${xiaozhi_sounds}/popup.flac"
-  sound_timer_alarm: "${xiaozhi_sounds}/timer_finished.flac"
+  sound_timer_alarm: "${ohf_sounds}/timer_finished.flac"
+  sound_mute_on: "${ohf_sounds}/mute_switch_on.flac"
+  sound_mute_off: "${ohf_sounds}/mute_switch_off.flac"
