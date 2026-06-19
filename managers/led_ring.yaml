@@ -30,6 +30,8 @@ substitutions:
   led_event_processing: "processing"
   led_event_idle: "idle"
   led_event_error: "error"
+  # Default no-op state handler; device packages should override this substitution.
+  led_ring_state_handler: !include ../devices/includes/led_ring/noop_state_handler.yaml
 
 ## LED State Tracking
 globals:
@@ -60,7 +62,6 @@ script:
             lambda: 'return event_type == "${evt_wake_acknowledged}";'
           then:
             - logger.log: "LED: Wake acknowledged - entering listening"
-            - lambda: id(led_ring_state) = "listening";
             - event.trigger:
                 id: led_event
                 event_type: "${led_event_listening}"
@@ -71,7 +72,6 @@ script:
             lambda: 'return event_type == "${evt_va_listening}";'
           then:
             - logger.log: "LED: Voice listening"
-            - lambda: id(led_ring_state) = "listening";
             - event.trigger:
                 id: led_event
                 event_type: "${led_event_listening}"
@@ -82,7 +82,6 @@ script:
             lambda: 'return event_type == "${evt_va_thinking}";'
           then:
             - logger.log: "LED: Voice processing"
-            - lambda: id(led_ring_state) = "processing";
             - event.trigger:
                 id: led_event
                 event_type: "${led_event_processing}"
@@ -93,7 +92,6 @@ script:
             lambda: 'return event_type == "${evt_announcement_started}";'
           then:
             - logger.log: "LED: Announcement started - processing"
-            - lambda: id(led_ring_state) = "processing";
             - event.trigger:
                 id: led_event
                 event_type: "${led_event_processing}"
@@ -104,7 +102,6 @@ script:
             lambda: 'return event_type == "${evt_mic_muted}";'
           then:
             - logger.log: "LED: Microphone muted"
-            - lambda: id(led_ring_state) = "muted";
             - event.trigger:
                 id: led_event
                 event_type: "${led_event_muted}"
@@ -115,7 +112,6 @@ script:
             lambda: 'return event_type == "${evt_mic_unmuted}";'
           then:
             - logger.log: "LED: Microphone unmuted - entering idle"
-            - lambda: id(led_ring_state) = "idle";
             - event.trigger:
                 id: led_event
                 event_type: "${led_event_idle}"
@@ -126,7 +122,6 @@ script:
             lambda: 'return event_type == "${evt_va_idle}";'
           then:
             - logger.log: "LED: Voice complete - returning to idle"
-            - lambda: id(led_ring_state) = "idle";
             - event.trigger:
                 id: led_event
                 event_type: "${led_event_idle}"
@@ -137,7 +132,6 @@ script:
             lambda: 'return event_type == "${evt_api_connected}";'
           then:
             - logger.log: "LED: API connected - entering idle"
-            - lambda: id(led_ring_state) = "idle";
             - event.trigger:
                 id: led_event
                 event_type: "${led_event_idle}"
@@ -152,10 +146,19 @@ script:
               }.count(event_type) > 0;
           then:
             - logger.log: "LED: Error state"
-            - lambda: id(led_ring_state) = "error";
             - event.trigger:
                 id: led_event
                 event_type: "${led_event_error}"
+
+  ################################################################################
+  ## Apply Device LED Handler
+  ##
+  ## Runs device-specific LED/UI updates based on canonical led_ring_state.
+  ## This allows both event-driven and state-reconcile call sites to reuse the
+  ## same device handler without relying on event_type scope.
+  ################################################################################
+  - id: led_ring_apply_device_handler
+    then: ${led_ring_state_handler}
 
 
 ## LED Event Platform
@@ -174,4 +177,7 @@ event:
       - ${led_event_processing}
       - ${led_event_idle}
       - ${led_event_error}
-    on_event: ${led_ring_event_handler}  # Device-specific LED control logic
+    on_event:
+      - lambda: |-
+          id(led_ring_state) = event_type;
+      - script.execute: led_ring_apply_device_handler

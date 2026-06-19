@@ -1,9 +1,5 @@
-## EchoEar LVGL UI Module
-## Owns UI rendering using LVGL widgets while state logic stays in managers.
-
 substitutions:
   ring_height: ${display_height}  # Diameter of the LED ring; should match the image asset dimensions.
   ring_thickness: "15"  # Pixel width of the status ring; inner dimensions are derived from this.
   ring_width: ${display_width}  # Overall width of the ring widget; typically same as height for circular rings.
 
-ui: !include ../../includes/ui/common.yaml

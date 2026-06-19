@@ -1,0 +1,17 @@
+- logger.log:
+    format: "LED Ring: Applying state: %s"
+    args: ["id(led_ring_state).c_str()"]
+
+- lvgl.widget.update:
+    id: ui_led_ring
+    bg_color: !lambda |-
+      if (id(led_ring_state) == "${led_event_listening}") {
+        return lv_color_hex(0x20A6FF);
+      }
+      if (id(led_ring_state) == "${led_event_processing}") {
+        return lv_color_hex(0x47D27B);
+      }
+      if (id(led_ring_state) == "${led_event_muted}" || id(led_ring_state) == "${led_event_error}") {
+        return lv_color_hex(0xDE4A4A);
+      }
+      return lv_color_hex(0x343D52);

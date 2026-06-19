@@ -1,0 +1,4 @@
+# Default no-op LED state handler.
+# Device packages should override led_ring_state_handler with device-specific logic.
+- lambda: |- 
+    return;

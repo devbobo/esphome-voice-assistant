@@ -1,0 +1,65 @@
+## EchoEar LVGL UI Module
+## Owns UI rendering using LVGL widgets while state logic stays in managers.
+
+substitutions:
+  ring_height: ${display_height}  # Diameter of the LED ring; should match the image asset dimensions.
+  ring_thickness: "15"  # Pixel width of the status ring; inner dimensions are derived from this.
+  ring_width: ${display_width}  # Overall width of the ring widget; typically same as height for circular rings.
+
+lvgl:
+  displays:
+    - va_display
+  touchscreens:
+    - touch_screen
+
+  # Ring lives on top_layer so it is visible on every page without duplication.
+  top_layer:
+    widgets:
+      - obj:
+          id: ui_led_ring
+          x: 0
+          y: 0
+          width: ${ring_width}
+          height: ${ring_height}
+          radius: !lambda return ${ring_height} / 2;
+          border_width: 0
+          bg_color: 0x343D52
+      - obj:
+          id: ui_ring_inner
+          x: !lambda return ${ring_thickness};
+          y: !lambda return ${ring_thickness};
+          width: !lambda return ${ring_width} - (2 * ${ring_thickness});
+          height: !lambda return ${ring_height} - (2 * ${ring_thickness});
+          radius: !lambda return (${ring_height} - (2 * ${ring_thickness})) / 2;
+          border_width: 0
+          bg_color: 0x06080E
+
+  pages:
+    - id: main_page
+      bg_color: 0x06080E
+      widgets:
+        - obj:
+            id: ui_detail_card
+            x: 72
+            y: 246
+            width: 216
+            height: 66
+            radius: 8
+            border_width: 2
+            border_color: 0xE8B033
+            bg_color: 0x1F2638
+            hidden: true
+
+interval:
+  - interval: 150ms
+    then:
+      - if:
+          condition:
+            lambda: 'return id(dm_render_requested);'
+          then:
+            - lambda: id(dm_render_requested) = false;
+
+            - lvgl.widget.update:
+                id: ui_detail_card
+                hidden: !lambda return !id(dm_detail_mode);
+            - script.execute: led_ring_apply_device_handler

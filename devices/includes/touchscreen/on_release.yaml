@@ -17,7 +17,7 @@
 ##
 ## Requires entities:
 ##   - id(touchscreen_event) - template event to trigger with touchscreen event
-##   - id(main_display) - display with get_width() and get_height()
+##   - id(va_display) - display with get_width() and get_height()
 
 then:
   - lambda: |-
@@ -38,8 +38,8 @@ then:
       const uint32_t dt = millis() - id(gs_start_ms);
 
       // Scale thresholds with screen
-      const int w = id(main_display).get_width();
-      const int h = id(main_display).get_height();
+      const int w = id(va_display).get_width();
+      const int h = id(va_display).get_height();
       const int min_dim = (w < h) ? w : h;
 
       // Swipe thresholds
