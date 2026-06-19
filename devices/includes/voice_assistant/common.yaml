@@ -507,27 +507,23 @@ switch:
     internal: true
     restore_mode: ALWAYS_OFF
     on_turn_on:
-      - logger.log: "Timer ringing: Starting alarm with native loop"
-      # Play alarm sound
-      - script.execute:
-          id: audio_queue_sound
-          sound_key: "timer_alarm"
-      # Wait until media is announcing to enable loop (responsiveness check)
-      - wait_until:
+      - logger.log: "Timer ringing: Starting alarm"
+      # Play alarm sound with looping
+      - while:
           condition:
-            media_player.is_announcing:
-      # Enable native media player looping for continuous playback
-      - lambda: |-
-          id(va_media_player)->set_repeat_all(true);
-      # Auto-stop after 15 minutes as failsafe
-      - delay: 15min
-      - switch.turn_off: timer_ringing
+            switch.is_on: timer_ringing
+          then:
+            - script.execute:
+                id: audio_queue_sound
+                sound_key: "timer_alarm"
+            - wait_until:
+                condition:
+                  not:
+                    media_player.is_announcing:
+            - delay: 100ms
+      - logger.log: "Timer ringing: Alarm loop stopped"
     on_turn_off:
       - logger.log: "Timer ringing: Stopping alarm"
-      # Disable looping immediately
-      - lambda: |-
-          id(va_media_player)->set_repeat_all(false);
-      # Stop playback
       - media_player.stop:
           id: va_media_player
       - script.execute: audio_stop_sound
