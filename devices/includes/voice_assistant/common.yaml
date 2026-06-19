@@ -123,6 +123,18 @@ script:
       - lambda: |-
           ESP_LOGI("timer", "Display: Timer Expired");
 
+  - id: mm_microphone_stop_listening
+    then:
+      - event.trigger:
+          id: system_event
+          event_type: "${evt_wake_word_stop_requested}"
+      - wait_until:
+          condition:
+            - not:
+                microphone.is_capturing
+          timeout: 3s
+      - delay: 200ms
+
   - id: toggle_voice_assistant
     then:
       - media_player.stop:
@@ -202,15 +214,7 @@ micro_wake_word:
     - hey_jarvis
     - alexa
   on_wake_word_detected:
-    - event.trigger:
-        id: system_event
-        event_type: "${evt_wake_word_stop_requested}"
-    - wait_until:
-        condition:
-          - not:
-              microphone.is_capturing
-        timeout: 3s
-    - delay: 200ms
+    - script.execute: mm_microphone_stop_listening
     - event.trigger:
         id: system_event
         event_type: "${evt_va_wake_word_detected}"
@@ -382,6 +386,8 @@ voice_assistant:
     - event.trigger:
         id: led_event
         event_type: "error"
+    # Stop listening before playing alarm sound (frees I2S bus)
+    - script.execute: mm_microphone_stop_listening
     - script.execute:
         id: audio_queue_sound
         sound_key: "timer_alarm"
