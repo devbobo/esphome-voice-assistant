@@ -103,6 +103,16 @@ script:
     parameters:
       touchscreen_event: string
     then:
+      # If single press and timer alarm is playing, stop it
+      - if:
+          condition:
+            lambda: |-
+              return std::string("${touchscreen_single_press}") == touchscreen_event &&
+                     id(timer_ringing).state;
+          then:
+            - logger.log: "Touchscreen: Single press detected while timer ringing, stopping alarm"
+            - script.execute: timer_stop_looping_alarm
+      # Always route to display manager for UI handling
       - script.execute:
           id: display_manager_handle_touch_event
           touchscreen_event: !lambda 'return touchscreen_event;'

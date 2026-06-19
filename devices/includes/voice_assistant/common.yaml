@@ -153,6 +153,8 @@ script:
     then:
       - logger.log: "Timer alarm: Starting looping playback"
       - switch.turn_on: timer_ringing
+      # Wake word detection (micro_wake_word) is active on hardware with separate I2S buses
+      # (microphone was NOT stopped in on_timer_finished for those devices)
       - while:
           condition:
             switch.is_on: timer_ringing
@@ -164,6 +166,7 @@ script:
                 condition:
                   not:
                     media_player.is_announcing:
+            # Brief delay (microphone listens for wake word in this gap if hw supports it)
             - delay: 50ms
       - logger.log: "Timer alarm: Looping playback stopped"
 
