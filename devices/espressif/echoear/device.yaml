@@ -7,7 +7,7 @@
 ##   - io_entities: High-level microphone/speaker/LED entities
 ##   - battery: Fuel gauge sensors
 ##   - display: Screen rendering and update loop
-##   - lvgl_ui: LVGL-based user interface widgets and styling
+##   - ui: LVGL-based user interface widgets and styling
 ##   - touchscreen: Touch controller wiring
 ##   - media_player: Device-local media player wiring + shared media includes
 ##   - voice_assistant: Device-local voice assistant wiring + shared VA includes

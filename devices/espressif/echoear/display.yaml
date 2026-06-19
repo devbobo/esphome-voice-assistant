@@ -1,6 +1,6 @@
 ## EchoEar Display Module
 ## Owns display hardware configuration for the round LCD.
-## UI rendering is provided by lvgl_ui.yaml.
+## UI rendering is provided by ui.yaml.
 
 substitutions:
   # Physical display dimensions (native resolution for JC3636W518V2: 360x360)

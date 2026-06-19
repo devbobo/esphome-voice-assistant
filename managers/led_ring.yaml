@@ -30,8 +30,6 @@ substitutions:
   led_event_processing: "processing"
   led_event_idle: "idle"
   led_event_error: "error"
-  # Default no-op state handler; device packages should override this substitution.
-  led_ring_state_handler: !include ../devices/includes/led_ring/noop_state_handler.yaml
 
 ## LED State Tracking
 globals:

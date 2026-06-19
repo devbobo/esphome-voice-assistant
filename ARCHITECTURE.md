@@ -46,7 +46,7 @@ devices/espressif/echoear/device.yaml
   -> io_entities.yaml
   -> battery.yaml
   -> display.yaml
-  -> lvgl_ui.yaml
+   -> ui.yaml
   -> touchscreen.yaml
      -> ../../includes/touchscreen/on_touch.yaml
      -> ../../includes/touchscreen/on_update.yaml
@@ -85,7 +85,7 @@ Each device should define:
 - `hardware.yaml`: Raw buses, codecs, board-level platform setup
 - `io_entities.yaml`: Higher-level entities and IDs (microphone, speaker, GPIO abstractions)
 - Optional device capabilities (for example `battery.yaml`, `touchscreen.yaml`)
-- Optional UI capabilities (for example `display.yaml`, `lvgl_ui.yaml`)
+- Optional UI capabilities (for example `display.yaml`, `ui.yaml`)
 - Device wrappers: `media_player.yaml`, `voice_assistant.yaml`
 
 ### Shared Include Fragments
@@ -173,7 +173,7 @@ Create:
 - `devices/<vendor>/<model>/device.yaml`
 - `devices/<vendor>/<model>/hardware.yaml`
 - `devices/<vendor>/<model>/io_entities.yaml`
-- Optional modules needed by the hardware/UI (for example `battery.yaml`, `touchscreen.yaml`, `display.yaml`, `lvgl_ui.yaml`)
+- Optional modules needed by the hardware/UI (for example `battery.yaml`, `touchscreen.yaml`, `display.yaml`, `ui.yaml`)
 - `devices/<vendor>/<model>/media_player.yaml`
 - `devices/<vendor>/<model>/voice_assistant.yaml`
 - `devices/<vendor>/<model>/i18n.yaml`
@@ -185,7 +185,7 @@ In `device.yaml`, include modules in dependency-safe order:
 1. `i18n.yaml`
 2. `hardware.yaml`
 3. `io_entities.yaml`
-4. Peripheral/UI modules (`battery.yaml`, `display.yaml`, `lvgl_ui.yaml`, `touchscreen.yaml`, etc.)
+4. Peripheral/UI modules (`battery.yaml`, `display.yaml`, `ui.yaml`, `touchscreen.yaml`, etc.)
 5. `media_player.yaml`
 6. `voice_assistant.yaml`
 
