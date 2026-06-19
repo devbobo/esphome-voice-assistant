@@ -3,12 +3,18 @@
 ##
 ## This directory contains self-contained modules that extend the voice
 ## assistant with new capabilities. Each module can provide:
-##   - State management (timers, counters, etc.)
+##   - State management (custom state, not core timers)
 ##   - Voice commands and intents
 ##   - Display pages and UI
 ##   - LED feedback and animations
 ##   - Sounds and audio queues
 ##   - Custom event handling
+##
+## IMPORTANT: Timers are CORE functionality
+##   - Do NOT create a module for timers
+##   - Timer support is integrated directly in voice_assistant common config
+##   - See devices/includes/voice_assistant/common.yaml
+##   - Timer module archive at modules/timer/ is for reference only
 ##
 ## Modules are activated by including them in event_router.yaml packages.
 ################################################################################

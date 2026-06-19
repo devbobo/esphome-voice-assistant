@@ -3,6 +3,184 @@
 # that provides:
 #   - microphone id: va_microphone
 #   - media_player id: va_media_player
+#
+# Includes CORE functionality:
+#   - Timers (native ESPHome voice_assistant timers with full UI/display support)
+#   - Wake word detection
+#   - Voice command processing
+
+################################################################################
+## Timer State Tracking & Display
+## Native ESPHome voice_assistant timers are core functionality
+################################################################################
+
+globals:
+  # Timer state for primary active timer (used for display/HA entities)
+  - id: mm_timer_active_id
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+
+  - id: mm_timer_active_name
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+
+  - id: mm_timer_seconds_remaining
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+  # Multi-timer support: track first active and first timer
+  - id: mm_timer_first_active
+    type: esphome::voice_assistant::Timer
+    restore_value: no
+
+  - id: mm_timer_first
+    type: esphome::voice_assistant::Timer
+    restore_value: no
+
+  - id: mm_timer_has_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+  - id: mm_timer_has_any
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+script:
+  ################################################################################
+  ## Timer State & Management Scripts
+  ################################################################################
+  - id: mm_timer_fetch_first_active
+    then:
+      - lambda: |-
+          const auto &timers = id(va).get_timers();
+          if (timers.empty()) return;
+          auto output_timer = *timers.begin();
+          for (const auto &timer : timers) {
+            if (timer.is_active && timer.seconds_left <= output_timer.seconds_left) {
+              output_timer = timer;
+            }
+          }
+          id(mm_timer_first_active) = output_timer;
+
+  - id: mm_timer_check_has_active
+    then:
+      - lambda: |-
+          const auto &timers = id(va).get_timers();
+          bool has_active = false;
+          for (const auto &timer : timers) {
+            if (timer.is_active) {
+              has_active = true;
+              break;
+            }
+          }
+          id(mm_timer_has_active) = has_active;
+
+  - id: mm_timer_fetch_first
+    then:
+      - lambda: |-
+          const auto &timers = id(va).get_timers();
+          if (timers.empty()) return;
+          auto output_timer = *timers.begin();
+          for (const auto &timer : timers) {
+            if (timer.seconds_left <= output_timer.seconds_left) {
+              output_timer = timer;
+            }
+          }
+          id(mm_timer_first) = output_timer;
+
+  - id: mm_timer_check_has_any
+    then:
+      - lambda: |-
+          const auto &timers = id(va).get_timers();
+          id(mm_timer_has_any) = !timers.empty();
+
+  ################################################################################
+  ## Timer Display Rendering
+  ################################################################################
+  - id: mm_timer_render_countdown
+    then:
+      - logger.log: "Rendering timer countdown"
+      - lambda: |-
+          id(mm_timer_check_has_active).execute();
+          if (!id(mm_timer_has_active)) {
+            ESP_LOGW("timer", "Countdown render called but no active timer");
+            return;
+          }
+          id(mm_timer_fetch_first_active).execute();
+          const uint32_t remaining_sec = id(mm_timer_first_active).seconds_left;
+          const uint32_t remaining_min = remaining_sec / 60;
+          const uint32_t remaining_s = remaining_sec % 60;
+          ESP_LOGI("timer", "Display: %u:%02u remaining (primary timer)", remaining_min, remaining_s);
+
+  - id: mm_timer_render_expired
+    then:
+      - logger.log: "Rendering timer expired"
+      - lambda: |-
+          ESP_LOGI("timer", "Display: Timer Expired");
+
+binary_sensor:
+  - platform: template
+    id: mm_timer_is_active_ha
+    name: "Timer Active"
+    lambda: |-
+      return id(mm_timer_has_active);
+
+sensor:
+  - platform: template
+    id: mm_timer_remaining_seconds
+    name: "Timer Remaining"
+    unit_of_measurement: "s"
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: |-
+      id(mm_timer_check_has_active).execute();
+      if (id(mm_timer_has_active)) {
+        id(mm_timer_fetch_first_active).execute();
+        return (float)id(mm_timer_first_active).seconds_left;
+      }
+      return 0.0f;
+
+  - platform: template
+    id: mm_timer_count_all
+    name: "Total Timers"
+    unit_of_measurement: "timers"
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: |-
+      return (float)id(va).get_timers().size();
+
+  - platform: template
+    id: mm_timer_count_active
+    name: "Active Timers"
+    unit_of_measurement: "timers"
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: |-
+      int count = 0;
+      for (const auto &timer : id(va).get_timers()) {
+        if (timer.is_active) count++;
+      }
+      return (float)count;
+
+text_sensor:
+  - platform: template
+    id: mm_timer_name
+    name: "Timer Name"
+    lambda: |-
+      return id(mm_timer_active_name);
+
+button:
+  - platform: template
+    id: mm_timer_button_cancel
+    name: "Cancel Timer"
+    on_press:
+      - logger.log: "Cancel timer button pressed"
+      - voice_assistant.stop:
 
 micro_wake_word:
   id: mww
@@ -22,7 +200,7 @@ micro_wake_word:
     - delay: 200ms
     - event.trigger:
         id: system_event
-        event_type: "${evt_wake_acknowledged}"
+        event_type: "${evt_va_wake_word_detected}"
     - if:
         condition:
           switch.is_on: wake_sound
@@ -50,29 +228,194 @@ voice_assistant:
         id: system_event
         event_type: ${evt_va_listening}
 
+  on_start:
+    - logger.log: "Voice assist pipeline started"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_start}
+
+  on_wake_word_detected:
+    - logger.log: "Wake word detected"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_wake_word_detected}
+
+  on_stt_vad_start:
+    - logger.log: "Voice activity detected"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_stt_vad_start}
+
   on_stt_vad_end:
     - logger.log: "Speech detected, processing..."
     - event.trigger:
         id: system_event
-        event_type: ${evt_va_thinking}
+        event_type: ${evt_va_stt_vad_end}
 
   on_stt_end:
     - logger.log: "Speech transcription complete"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_stt_end}
+
+  on_intent_start:
+    - logger.log: "Intent processing started"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_intent_start}
+
+  on_intent_progress:
+    - logger.log: "Intent progress"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_intent_progress}
+
+  on_intent_end:
+    - logger.log: "Intent processing complete"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_intent_end}
 
   on_tts_start:
     - logger.log: "Playing response"
     - event.trigger:
         id: system_event
-        event_type: ${evt_va_replying}
+        event_type: ${evt_va_tts_start}
+
+  on_tts_end:
+    - logger.log: "Text-to-speech complete"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_tts_end}
+
+  on_tts_stream_start:
+    - logger.log: "Audio stream playback started"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_tts_stream_start}
+
+  on_tts_stream_end:
+    - logger.log: "Audio stream playback ended"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_tts_stream_end}
+
+  on_idle:
+    - logger.log: "Voice assistant idle"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_idle}
 
   on_end:
     # Voice intent routing for modules
     - lambda: |-
         ESP_LOGD("voice", "Voice assistant cycle complete");
-    
     - event.trigger:
         id: system_event
         event_type: ${evt_va_idle}
+
+  on_client_connected:
+    - logger.log: "Voice assistant client connected"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_client_connected}
+
+  on_client_disconnected:
+    - logger.log: "Voice assistant client disconnected"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_client_disconnected}
+
+  on_timer_started:
+    - logger.log: "Timer started"
+    - event.trigger:
+        id: system_event
+        event_type: "${evt_va_timer_started}"
+    - script.execute: mm_timer_check_has_active
+    - script.execute: mm_timer_fetch_first_active
+    - lambda: |-
+        id(mm_timer_active_id) = id(mm_timer_first_active).id;
+        id(mm_timer_active_name) = id(mm_timer_first_active).name;
+        id(mm_timer_seconds_remaining) = id(mm_timer_first_active).seconds_left;
+        ESP_LOGI("timer", "Timer started: %s (%.0f active timers)", id(mm_timer_active_name).c_str(), (float)id(va).get_timers().size());
+    - event.trigger:
+        id: led_event
+        event_type: "processing"
+    - script.execute:
+        id: audio_queue_sound
+        sound_key: "timer_started"
+    - lambda: |-
+        id(dm_current_view) = "module_timer:countdown";
+
+  on_timer_updated:
+    - logger.log: "Timer updated"
+    - event.trigger:
+        id: system_event
+        event_type: "${evt_va_timer_updated}"
+    - script.execute: mm_timer_check_has_active
+    - script.execute: mm_timer_fetch_first_active
+    - lambda: |-
+        id(mm_timer_active_id) = id(mm_timer_first_active).id;
+        id(mm_timer_active_name) = id(mm_timer_first_active).name;
+        id(mm_timer_seconds_remaining) = id(mm_timer_first_active).seconds_left;
+
+  on_timer_tick:
+    - logger.log: "Timer tick"
+    - event.trigger:
+        id: system_event
+        event_type: "${evt_va_timer_tick}"
+    - script.execute: mm_timer_check_has_active
+    - script.execute: mm_timer_fetch_first_active
+    - lambda: |-
+        id(mm_timer_seconds_remaining) = id(mm_timer_first_active).seconds_left;
+
+  on_timer_finished:
+    - logger.log: "Timer finished"
+    - event.trigger:
+        id: system_event
+        event_type: "${evt_va_timer_finished}"
+    - script.execute: mm_timer_check_has_active
+    - script.execute: mm_timer_fetch_first_active
+    - lambda: |-
+        ESP_LOGI("timer", "Timer finished: %s (%.0f active timers remaining)", id(mm_timer_first_active).name.c_str(), (float)id(va).get_timers().size());
+    - event.trigger:
+        id: led_event
+        event_type: "error"
+    - script.execute:
+        id: audio_queue_sound
+        sound_key: "timer_alarm"
+    - lambda: |-
+        id(dm_current_view) = "module_timer:expired";
+
+  on_timer_cancelled:
+    - logger.log: "Timer cancelled"
+    - event.trigger:
+        id: system_event
+        event_type: "${evt_va_timer_cancelled}"
+    - script.execute: mm_timer_check_has_active
+    - if:
+        condition:
+          lambda: |-
+            return id(mm_timer_has_active);
+        then:
+          - script.execute: mm_timer_fetch_first_active
+          - lambda: |-
+              id(mm_timer_active_id) = id(mm_timer_first_active).id;
+              id(mm_timer_active_name) = id(mm_timer_first_active).name;
+              id(mm_timer_seconds_remaining) = id(mm_timer_first_active).seconds_left;
+              ESP_LOGI("timer", "Timer cancelled, now showing: %s", id(mm_timer_active_name).c_str());
+        else:
+          - lambda: |-
+              id(mm_timer_active_id) = "";
+              id(mm_timer_active_name) = "";
+              id(mm_timer_seconds_remaining) = 0;
+              ESP_LOGI("timer", "Last timer cancelled");
+          - event.trigger:
+              id: led_event
+              event_type: "idle"
+          - script.execute: audio_stop_sound
+          - lambda: |-
+              id(dm_current_view) = "page_0_idle";
 
   on_error:
     - logger.log: "Voice assistant error"

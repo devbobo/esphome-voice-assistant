@@ -1,147 +1,31 @@
 ################################################################################
-## Timer Module - Core State & Scripts
+## Timer Module - ARCHIVED - Now Core Functionality
 ##
-## Internal state management and core command handlers.
-## All timer state mutations happen here.
+## Timer core functionality has been moved to:
+##   devices/includes/voice_assistant/common.yaml
 ##
-## State Variables (mm_timer_ prefix):
-##   - duration_sec: Total duration in seconds
-##   - started_ms: System time when timer was started
-##   - is_active: Whether timer is currently counting down
-##   - is_expired: Whether timer has finished counting down
+## This represents the ESPHome architectural decision:
+##   - Timer state machine: Handled natively by voice_assistant component
+##   - Timer handlers (on_timer_started, etc.): In voice_assistant common
+##   - Timer globals: Defined in voice_assistant common
 ##
-## Core Scripts:
-##   - mm_timer_command_set: Start a new timer
-##   - mm_timer_command_cancel: Stop active timer
-##   - mm_timer_command_acknowledge_expired: Dismiss expired state
-##   - mm_timer_tick: Called every second to check expiry
+## This module now contains ONLY optional display/UI enhancements:
+##   - Display rendering (countdown, expired states)
+##   - Home Assistant entity integrations
+##
+## The module is optional because:
+##   - Timers work on any device with voice_assistant (core feature)
+##   - This module just makes them visible/usable via UI or HA
+##   - A device can use timers without this display module
+##
+## To use timers: Just use ESPHome's voice_assistant component
+##   - Timers automatically work via native on_timer_* handlers
+##   - No module setup required
+##
+## To enhance timer display/UI: Optional - include this module
+##   - Adds countdown display rendering
+##   - Adds HA entity integration
+##   - Adds LED/audio feedback integration
 ################################################################################
 
-globals:
-  - id: mm_timer_duration_sec
-    type: uint32_t
-    restore_value: no
-    initial_value: "0"
-
-  - id: mm_timer_started_ms
-    type: uint32_t
-    restore_value: no
-    initial_value: "0"
-
-  - id: mm_timer_is_active
-    type: bool
-    restore_value: no
-    initial_value: "false"
-
-  - id: mm_timer_is_expired
-    type: bool
-    restore_value: no
-    initial_value: "false"
-
-  - id: mm_timer_alarm_queued
-    type: bool
-    restore_value: no
-    initial_value: "false"
-
-script:
-  ################################################################################
-  ## Set Timer
-  ################################################################################
-  - id: mm_timer_command_set
-    mode: queued
-    parameters:
-      duration_sec: uint32_t
-    then:
-      - logger.log:
-          format: "Timer: Setting timer for %u seconds"
-          args: ["duration_sec"]
-      - lambda: |-
-          id(mm_timer_duration_sec) = duration_sec;
-          id(mm_timer_started_ms) = millis();
-          id(mm_timer_is_active) = true;
-          id(mm_timer_is_expired) = false;
-          id(mm_timer_alarm_queued) = false;
-      # Trigger LED feedback for active timer
-      - event.trigger:
-          id: led_event
-          event_type: "processing"
-      # Queue confirmation sound
-      - script.execute:
-          id: audio_queue_sound
-          sound_key: "timer_started"
-      # Update display to show countdown
-      - lambda: |-
-          id(dm_current_view) = "module_timer:countdown";
-
-  ################################################################################
-  ## Cancel Timer
-  ################################################################################
-  - id: mm_timer_command_cancel
-    mode: queued
-    then:
-      - logger.log: "${mm_timer_log_cancelling_timer}"
-      - lambda: |-
-          id(mm_timer_is_active) = false;
-          id(mm_timer_is_expired) = false;
-          id(mm_timer_alarm_queued) = false;
-          id(mm_timer_duration_sec) = 0;
-      - event.trigger:
-          id: led_event
-          event_type: "idle"
-      - lambda: |-
-          id(dm_current_view) = "page_0_idle";
-
-  ################################################################################
-  ## Acknowledge Expired
-  ################################################################################
-  - id: mm_timer_command_acknowledge_expired
-    mode: queued
-    then:
-      - logger.log: "${mm_timer_log_acknowledging_expired}"
-      - lambda: |-
-          id(mm_timer_is_expired) = false;
-          id(mm_timer_alarm_queued) = false;
-          id(mm_timer_duration_sec) = 0;
-      - script.execute: audio_stop_sound
-      - event.trigger:
-          id: led_event
-          event_type: "idle"
-      - lambda: |-
-          id(dm_current_view) = "page_0_idle";
-
-  ################################################################################
-  ## Timer Tick - Check for expiry
-  ################################################################################
-  - id: mm_timer_tick
-    mode: queued
-    then:
-      - if:
-          condition:
-            lambda: "return id(mm_timer_is_active);"
-          then:
-            - lambda: |-
-                const uint32_t elapsed_sec = (millis() - id(mm_timer_started_ms)) / 1000;
-                const uint32_t total_sec = id(mm_timer_duration_sec);
-                if (elapsed_sec >= total_sec) {
-                  id(mm_timer_is_active) = false;
-                  id(mm_timer_is_expired) = true;
-                  ESP_LOGI("timer", "Timer expired!");
-                }
-
-interval:
-  - interval: 1s
-    then:
-      - script.execute: mm_timer_tick
-      - if:
-          condition:
-            lambda: "return id(mm_timer_is_expired) && !id(mm_timer_alarm_queued);"
-          then:
-            - lambda: "id(mm_timer_alarm_queued) = true;"
-            - script.execute:
-                id: audio_queue_sound
-                sound_key: "timer_alarm"
-            - event.trigger:
-                id: led_event
-                event_type: "error"
-            - lambda: |-
-                id(dm_current_view) = "module_timer:expired";
+# No core state machine here - all handled in voice_assistant common

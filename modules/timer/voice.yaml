@@ -1,65 +1,18 @@
 ################################################################################
-## Timer Module - Voice Integration
+## Timer Module - Voice Integration (Archived)
 ##
-## Handles voice command routing from the voice assistant.
-## Entry point: mm_timer_voice_handler
+## Timer voice handling is now implemented natively by ESPHome's voice_assistant
+## component. See devices/includes/voice_assistant/common.yaml for:
+##   - on_timer_started: Plays confirmation sound, shows countdown
+##   - on_timer_finished: Plays alarm, shows expired display
+##   - on_timer_cancelled: Stops sounds, returns to idle
+##   - on_timer_tick: Logs remaining time
+##   - on_timer_updated: Handles pause/resume
 ##
-## Expected intents:
-##   - timer_set_minutes: "set a timer for {minutes} minutes"
-##   - timer_set_seconds: "set a timer for {seconds} seconds"
-##   - timer_cancel: "cancel the timer" / "stop the timer"
-##   - timer_acknowledge: "stop" (when expired)
+## No custom intent parsing needed - the voice_assistant component handles
+## timer lifecycle management directly.
+##
+## This file is kept for historical reference but is no longer used.
 ################################################################################
 
-script:
-  ################################################################################
-  ## Voice Handler - Entry point for voice command routing
-  ##
-  ## Called from voice_assistant.on_end handler.
-  ## Receives parsed intent and parameters from Home Assistant.
-  ################################################################################
-  - id: mm_timer_voice_handler
-    mode: queued
-    parameters:
-      intent_name: string
-      intent_data: string
-    then:
-      - logger.log:
-          format: "Timer: Voice handler received intent '%s' with data '%s'"
-          args: ["intent_name.c_str()", "intent_data.c_str()"]
-
-      # Set timer for N minutes
-      - if:
-          condition:
-            lambda: 'return intent_name == "timer_set_minutes";'
-          then:
-            - logger.log: "${mm_timer_log_setting_timer_minutes}"
-            - script.execute:
-                id: mm_timer_command_set
-                duration_sec: 300  # TODO: Parse from intent_data
-
-      # Set timer for N seconds
-      - if:
-          condition:
-            lambda: 'return intent_name == "timer_set_seconds";'
-          then:
-            - logger.log: "${mm_timer_log_setting_timer_seconds}"
-            - script.execute:
-                id: mm_timer_command_set
-                duration_sec: 30  # TODO: Parse from intent_data
-
-      # Cancel timer
-      - if:
-          condition:
-            lambda: 'return intent_name == "timer_cancel" || intent_name == "timer_stop";'
-          then:
-            - logger.log: "${mm_timer_log_cancelling_timer}"
-            - script.execute: mm_timer_command_cancel
-
-      # Acknowledge expired timer
-      - if:
-          condition:
-            lambda: 'return intent_name == "timer_acknowledge";'
-          then:
-            - logger.log: "${mm_timer_log_acknowledging_expired}"
-            - script.execute: mm_timer_command_acknowledge_expired
+# Voice timer handling now implemented natively in voice_assistant component

@@ -66,30 +66,74 @@ automation:
 
 Or use a custom component to map intents to device services.
 
-## Future Enhancement
+## Alternative: On-Device Routing via Text Matching
 
-If ESPHome adds intent data to the `on_end` handler, we can implement in-device 
-routing:
+ESPHome's `on_stt_end` handler provides access to transcribed text as variable `x`. This enables 
+on-device routing without Home Assistant involvement, though it uses pattern matching rather 
+than semantic intent matching.
+
+### Implementation
+
+Configure voice assistant with routing logic:
 
 ```yaml
-# When available
-on_end:
-  - if:
-      condition:
-        lambda: 'return id(va).intent_id().find("timer_") == 0;'
-      then:
-        - script.execute:
-            id: mm_timer_voice_handler
-            intent_name: !lambda 'return id(va).intent_id();'
-            intent_data: !lambda 'return id(va).intent_data();'
+voice_assistant:
+  microphone: ...
+  speaker: ...
+  on_stt_end:
+    - if:
+        condition:
+          lambda: 'return x.find("timer") != std::string::npos;'
+        then:
+          - script.execute:
+              id: mm_timer_voice_handler
+              voice_text: !lambda 'return x;'
+    - if:
+        condition:
+          lambda: 'return x.find("alarm") != std::string::npos;'
+        then:
+          - script.execute:
+              id: mm_alarm_voice_handler
+              voice_text: !lambda 'return x;'
 ```
 
-## Current Workaround
+Each module parses the voice text to extract parameters:
 
-For now, voice intents should be routed through:
+```yaml
+# modules/timer/voice.yaml
+script:
+  - id: mm_timer_voice_handler
+    parameters:
+      voice_text: string
+    then:
+      - if:
+          condition:
+            lambda: |
+              return voice_text.find("set") != std::string::npos ||
+                     voice_text.find("start") != std::string::npos;
+          then:
+            - script.execute:
+                id: mm_timer_command_set
+                duration_sec: !lambda 'return extract_duration_from_text(voice_text);'
+```
 
-1. **Direct Service Calls**: Home Assistant calls `esphome.device_mm_module_voice_handler`
-2. **Automations**: Match intents and trigger device services
-3. **Custom Integrations**: Build Home Assistant integration to handle routing
+### Pros & Cons
 
-This keeps the module system independent of Home Assistant implementation details.
+**Advantages:**
+- Fully on-device (no HA dependency)
+- Faster response (no HA round-trip)
+- Simpler architecture for simple commands
+
+**Disadvantages:**
+- Text pattern matching is fragile across languages and phrasings
+- Requires more complex parsing logic in device scripts
+- Less flexible than semantic intent matching
+
+## Recommended Approach
+
+For best results, **combine both methods**:
+
+1. Use `on_stt_end` for quick feedback and state changes on-device
+2. Use HA automations for complex intent matching and multi-device coordination
+
+This keeps the module system independent while leveraging Home Assistant's strengths.

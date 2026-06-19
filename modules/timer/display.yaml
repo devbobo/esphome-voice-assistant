@@ -1,12 +1,17 @@
 ################################################################################
 ## Timer Module - Display Integration
 ##
-## Renders timer pages on the device display.
+## Optional display rendering for timer state.
+## These render scripts are called by the display manager when
+## dm_current_view is set to "module_timer:countdown" or "module_timer:expired"
+## by the core voice_assistant handlers.
+##
 ## Entry points:
-##   - mm_timer_render_countdown: Show remaining time
+##   - mm_timer_render_countdown: Show remaining time on display
 ##   - mm_timer_render_expired: Show "Timer Expired" message
 ##
-## Display manager will detect "module_timer:*" view keys and call these.
+## Note: This module is entirely optional.
+## Timers work without this module - they just won't have custom display rendering.
 ################################################################################
 
 script:
@@ -19,15 +24,12 @@ script:
     then:
       - logger.log: "${mm_timer_log_rendering_countdown}"
       - lambda: |-
-          if (!id(mm_timer_is_active)) {
+          if (id(mm_timer_active_id).empty()) {
             ESP_LOGW("timer", "Countdown render called but timer not active");
             return;
           }
           
-          const uint32_t elapsed_ms = millis() - id(mm_timer_started_ms);
-          const uint32_t total_ms = id(mm_timer_duration_sec) * 1000;
-          const uint32_t remaining_ms = (elapsed_ms < total_ms) ? (total_ms - elapsed_ms) : 0;
-          const uint32_t remaining_sec = remaining_ms / 1000;
+          const uint32_t remaining_sec = id(mm_timer_seconds_remaining);
           const uint32_t remaining_min = remaining_sec / 60;
           const uint32_t remaining_s = remaining_sec % 60;
           
@@ -48,5 +50,4 @@ script:
           // TODO: Render on LVGL display
           // - Show "Timer Expired" in large text
           // - Show "Say 'stop' to acknowledge" below
-          // - Optional: Show time it was set for (mm_timer_duration_sec)
           ESP_LOGI("timer", "Display: Timer Expired - awaiting acknowledgement");

@@ -1,43 +1,26 @@
 ################################################################################
 ## Timer Module - Manifest
 ##
-## Declares all capabilities, integration points, and metadata.
-## Core managers read this at boot to discover and wire up the module.
+## IMPORTANT: Timer core functionality is now part of ESPHome's voice_assistant
+## component and is handled by devices/includes/voice_assistant/common.yaml
 ##
-## All descriptions use i18n substitutions for easy translation.
-## See i18n.yaml for the actual string values.
+## This module provides OPTIONAL display and Home Assistant integration:
+##   - Display page rendering (countdown, expired states)
+##   - HA entity integration
+##   - LED/audio feedback hooks
+##
+## Module Status: Optional Enhancement
+##   - Timers work natively in voice_assistant (always available)
+##   - Include this module only if you want custom display rendering
+##   - Devices without this module still have full timer functionality
+##
+## See devices/includes/voice_assistant/common.yaml for core timer implementation.
 ################################################################################
 
 name: "${mm_timer_module_name}"
 description: "${mm_timer_module_description}"
-version: "1.0.0"
-
-voice_intents:
-  - intent_id: "timer_set_minutes"
-    description: "${mm_timer_voice_set_minutes_desc}"
-    handler_script: "mm_timer_voice_handler"
-    parameters:
-      - name: "minutes"
-        type: "int"
-        min: 1
-        max: 60
-
-  - intent_id: "timer_set_seconds"
-    description: "${mm_timer_voice_set_seconds_desc}"
-    handler_script: "mm_timer_voice_handler"
-    parameters:
-      - name: "seconds"
-        type: "int"
-        min: 1
-        max: 3600
-
-  - intent_id: "timer_cancel"
-    description: "${mm_timer_voice_cancel_desc}"
-    handler_script: "mm_timer_voice_handler"
-
-  - intent_id: "timer_acknowledge"
-    description: "${mm_timer_voice_acknowledge_desc}"
-    handler_script: "mm_timer_voice_handler"
+version: "2.0.0"
+note: "Core timer functionality - this module is now only for optional UI/display"
 
 display_pages:
   - page_id: "module_timer:countdown"
