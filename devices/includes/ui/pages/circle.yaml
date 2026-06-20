@@ -42,7 +42,7 @@
         height: 70
         text: "0:00"
         text_align: CENTER
-        text_font: montserrat_48
+        text_font: montserrat_50
         align: CENTER
         text_color: ${color_white}
     # Timer duration hint (below timer)
@@ -53,7 +53,7 @@
         width: 200
         height: 40
         text: "30 SEC."
-        text_font: montserrat_16
+        text_font: montserrat_24
         text_align: CENTER
         align: CENTER
         text_color: ${color_bright_orange}
