@@ -14,7 +14,7 @@ substitutions:
   timer_arc_y: "55"  # (display_height - timer_arc_size) / 2
   timer_value_x: "0"  # Center labels horizontally with arc
   timer_value_y: "0"  # Inside arc vertically
-  timer_name_y: "-70"  # Above timer value
+  timer_name_y: "-50"  # Above timer value
   timer_duration_y: "70"  # Below arc
 
 packages:

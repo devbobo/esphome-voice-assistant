@@ -44,14 +44,14 @@
         text_font: montserrat_24
         text_align: CENTER
         align: CENTER
-        text_color: ${color_bright_orange}
+        text_color: ${color_light_gray}
     # Timer value (center text - MM:SS or H:MM:SS format)
     - label:
         id: ui_timer_value
         x: ${timer_value_x}
         y: ${timer_value_y}
         width: 200
-        height: 70
+        # height: 70
         text: "0:00"
         text_align: CENTER
         text_font: montserrat_60
