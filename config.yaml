@@ -24,3 +24,22 @@ substitutions:
   sound_timer_alarm: "${ohf_sounds}/timer_finished.flac"
   sound_mute_on: "${ohf_sounds}/mute_switch_on.flac"
   sound_mute_off: "${ohf_sounds}/mute_switch_off.flac"
+
+# Timer display fonts
+font:
+  - file:
+      type: gfonts
+      family: Nunito
+      weight: 700
+    id: montserrat_60
+    size: 60
+    glyphsets:
+      - GF_Latin_Core
+  - file:
+      type: gfonts
+      family: Nunito
+      weight: 700
+    id: montserrat_24
+    size: 24
+    glyphsets:
+      - GF_Latin_Core
