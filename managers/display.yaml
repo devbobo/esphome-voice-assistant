@@ -123,7 +123,14 @@ script:
           condition:
             lambda: 'return touchscreen_event == "${touchscreen_single_press}";'
           then:
-            - lambda: id(dm_detail_mode) = !id(dm_detail_mode);
+            # Don't toggle detail mode on timer pages - let timer display stay visible
+            - if:
+                condition:
+                  lambda: 'return id(dm_current_view).find("module_timer:") != std::string::npos;'
+                then:
+                  - logger.log: "Touch on timer display - detail mode blocked"
+                else:
+                  - lambda: id(dm_detail_mode) = !id(dm_detail_mode);
       - if:
           condition:
             lambda: 'return touchscreen_event == "${touchscreen_double_press}";'
