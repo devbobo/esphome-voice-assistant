@@ -635,14 +635,14 @@ voice_assistant:
   on_timer_started:
     - logger.log: "Timer started"
     - lambda: |-
-        const auto &timers = id(va).get_timers();
-        int total = timers.size();
+        const auto &timer_list = id(va).get_timers();
+        int total = timer_list.size();
         int active = 0;
-        for (const auto &t : timers) {
+        for (const auto &t : timer_list) {
           if (t.is_active) active++;
         }
         ESP_LOGI("timer", "[TIMER_STARTED] Total timers: %d, Active: %d", total, active);
-        for (const auto &t : timers) {
+        for (const auto &t : timer_list) {
           if (t.is_active) {
             ESP_LOGI("timer", "  - Timer: id=%s, name=%s, total=%u sec, remaining=%u sec, active=%d", 
                      t.id.c_str(), t.name.c_str(), t.total_seconds, t.seconds_left, t.is_active);
@@ -673,9 +673,9 @@ voice_assistant:
 
   on_timer_tick:
     - lambda: |-
-        const auto &timers = id(va).get_timers();
+        const auto &timer_list = id(va).get_timers();
         int active = 0;
-        for (const auto &t : timers) {
+        for (const auto &t : timer_list) {
           if (t.is_active) active++;
         }
         ESP_LOGD("timer", "[TIMER_TICK] view=%s, active_timers=%d, current_timer_id=%s", 
