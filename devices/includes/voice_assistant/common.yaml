@@ -409,12 +409,23 @@ voice_assistant:
         auto remaining_sec = id(timer_seconds_remaining);
         auto total_sec = id(timer_first_active).total_seconds;
         
-        // Update timer value label (MM:SS)
+        // Update timer value label (H:MM:SS or MM:SS)
         auto label_timer = (lv_obj_t *)id(ui_timer_value);
         char buf[16];
-        uint16_t remaining_min = remaining_sec / 60;
-        uint16_t remaining_s = remaining_sec % 60;
-        snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
+        
+        if (total_sec >= 3600) {
+          // Format as H:MM:SS
+          uint16_t remaining_h = remaining_sec / 3600;
+          uint16_t remaining_min = (remaining_sec % 3600) / 60;
+          uint16_t remaining_s = remaining_sec % 60;
+          snprintf(buf, sizeof(buf), "%u:%02u:%02u", remaining_h, remaining_min, remaining_s);
+        } else {
+          // Format as MM:SS
+          uint16_t remaining_min = remaining_sec / 60;
+          uint16_t remaining_s = remaining_sec % 60;
+          snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
+        }
+        
         lv_label_set_text(label_timer, buf);
         
         // Update duration hint label
@@ -467,13 +478,24 @@ voice_assistant:
               auto remaining_sec = id(timer_seconds_remaining);
               auto total_sec = id(timer_first_active).total_seconds;
               
-              // Update timer value label (MM:SS)
+              // Update timer value label (H:MM:SS or MM:SS)
               auto label_timer = (lv_obj_t *)id(ui_timer_value);
               if (label_timer != nullptr) {
                 char buf[16];
-                uint16_t remaining_min = remaining_sec / 60;
-                uint16_t remaining_s = remaining_sec % 60;
-                snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
+                
+                if (total_sec >= 3600) {
+                  // Format as H:MM:SS
+                  uint16_t remaining_h = remaining_sec / 3600;
+                  uint16_t remaining_min = (remaining_sec % 3600) / 60;
+                  uint16_t remaining_s = remaining_sec % 60;
+                  snprintf(buf, sizeof(buf), "%u:%02u:%02u", remaining_h, remaining_min, remaining_s);
+                } else {
+                  // Format as MM:SS
+                  uint16_t remaining_min = remaining_sec / 60;
+                  uint16_t remaining_s = remaining_sec % 60;
+                  snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
+                }
+                
                 lv_label_set_text(label_timer, buf);
                 ESP_LOGI("timer", "Updated timer label: %s", buf);
               } else {
