@@ -18,36 +18,74 @@ script:
   ################################################################################
   ## Render Countdown Page
   ## 
-  ## Shows remaining time and prompt to cancel or wait.
+  ## Shows remaining time with circular progress ring, duration hint, and controls.
   ################################################################################
   - id: mm_timer_render_countdown
     then:
       - logger.log: "${mm_timer_log_rendering_countdown}"
       - lambda: |-
-          if (id(mm_timer_active_id).empty()) {
+          if (id(timer_active_id).empty()) {
             ESP_LOGW("timer", "Countdown render called but timer not active");
             return;
           }
           
-          const uint32_t remaining_sec = id(mm_timer_seconds_remaining);
+          const uint32_t remaining_sec = id(timer_seconds_remaining);
+          const uint32_t total_sec = id(timer_first_active).total_seconds;
           const uint32_t remaining_min = remaining_sec / 60;
           const uint32_t remaining_s = remaining_sec % 60;
           
-          ESP_LOGI("timer", "Display: %u:%02u remaining", remaining_min, remaining_s);
-          // TODO: Render on LVGL display
-          // - Show "Timer: M:SS" centered
-          // - Show "Say 'cancel' to stop" below
+          ESP_LOGI("timer", "Display: %u:%02u remaining / %u sec total", remaining_min, remaining_s, total_sec);
+      # Show timer page
+      - lvgl.page.show:
+          id: timer_page
+      # Update timer display values
+      - lvgl.widget.update:
+          id: ui_timer_value
+          text: !lambda |-
+            char buf[8];
+            uint32_t remaining_sec = id(timer_seconds_remaining);
+            uint32_t remaining_min = remaining_sec / 60;
+            uint32_t remaining_s = remaining_sec % 60;
+            snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
+            return std::string(buf);
+      # Update duration hint
+      - lvgl.widget.update:
+          id: ui_timer_duration
+          text: !lambda |-
+            char buf[16];
+            uint32_t total_sec = id(timer_first_active).total_seconds;
+            snprintf(buf, sizeof(buf), "%u SEC.", total_sec);
+            return std::string(buf);
+      # Update progress arc (0-360 degrees based on time remaining)
+      - lvgl.widget.update:
+          id: ui_timer_arc
+          end_angle: !lambda |-
+            uint32_t remaining_sec = id(timer_seconds_remaining);
+            uint32_t total_sec = id(timer_first_active).total_seconds;
+            if (total_sec == 0) return 0;
+            return (remaining_sec * 360) / total_sec;
 
   ################################################################################
   ## Render Expired Page
   ##
-  ## Shows "Timer Expired" and prompt to acknowledge.
+  ## Shows "Timer Expired" message and controls.
   ################################################################################
   - id: mm_timer_render_expired
     then:
       - logger.log: "${mm_timer_log_rendering_expired}"
-      - lambda: |-
-          // TODO: Render on LVGL display
-          // - Show "Timer Expired" in large text
-          // - Show "Say 'stop' to acknowledge" below
-          ESP_LOGI("timer", "Display: Timer Expired - awaiting acknowledgement");
+      - logger.log: "Display: Timer Expired - showing expiration UI"
+      # Show timer page
+      - lvgl.page.show:
+          id: timer_page
+      # Update timer display to show "EXPIRED"
+      - lvgl.widget.update:
+          id: ui_timer_value
+          text: "EXPIRED"
+      # Update duration hint
+      - lvgl.widget.update:
+          id: ui_timer_duration
+          text: ""
+      # Set arc to full (show full ring when expired)
+      - lvgl.widget.update:
+          id: ui_timer_arc
+          end_angle: 360

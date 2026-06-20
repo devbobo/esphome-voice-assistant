@@ -12,3 +12,42 @@
         border_color: 0xE8B033
         bg_color: 0x1F2638
         hidden: true
+
+- id: timer_page
+  bg_color: 0x06080E
+  widgets:
+    # Circular progress arc (timer ring)
+    - arc:
+        id: ui_timer_arc
+        x: 60
+        y: 60
+        width: 200
+        height: 200
+        start_angle: 0
+        end_angle: 360
+        rotation: 270
+        arc_width: 20
+        bg_color: 0x1F2638
+        border_width: 0
+    # Timer value (center text - MM:SS format)
+    - label:
+        id: ui_timer_value
+        x: 110
+        y: 130
+        width: 100
+        height: 60
+        text: "0:00"
+        text_font: montserrat_36
+        align: CENTER
+        text_color: 0xFFFFFF
+    # Timer duration hint (below timer)
+    - label:
+        id: ui_timer_duration
+        x: 110
+        y: 200
+        width: 100
+        height: 30
+        text: "30 SEC."
+        text_font: montserrat_14
+        align: CENTER
+        text_color: 0xFFA500
