@@ -104,7 +104,6 @@
         text_color: ${color_black}
     # Timer value (center text - MM:SS or H:MM:SS format)
     - label:
-        id: ui_expired_timer_value
         x: ${timer_value_x}
         y: ${timer_value_y}
         width: 200
@@ -113,7 +112,7 @@
         text_align: CENTER
         text_font: montserrat_60
         align: CENTER
-        text_color: ${color_white}
+        text_color: ${color_black}
     # Timer duration hint (below timer)
     - label:
         id: ui_expired_timer_duration
