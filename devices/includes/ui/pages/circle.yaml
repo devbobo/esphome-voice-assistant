@@ -136,7 +136,7 @@
         y: 0
         width: 260
         height: 40
-        text: "No Active Timers"
+        text: "No active timers"
         text_font: montserrat_24
         text_align: CENTER
         align: CENTER
