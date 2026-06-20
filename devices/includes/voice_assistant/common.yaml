@@ -590,11 +590,6 @@ voice_assistant:
 
   on_timer_tick:
     - logger.log: "Timer tick"
-    - lambda: |-
-        std::string view = id(dm_current_view);
-        if (!view.empty()) {
-          ESP_LOGI("timer", "on_timer_tick: dm_current_view='%s'", view.c_str());
-        }
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_tick}"
@@ -602,13 +597,14 @@ voice_assistant:
     - lambda: |-
         id(timer_seconds_remaining) = id(timer_first_active).seconds_left;
         ESP_LOGI("timer", "on_timer_tick: seconds_left=%u", id(timer_seconds_remaining));
-    # Update display on each tick if countdown view is active
+    # NOTE: This only updates display CONTENT (labels/arc), never display NAVIGATION
+    # dm_current_view and dm_page_index are NEVER modified by timer ticks
     - if:
         condition:
           lambda: 'return id(dm_current_view) == "module_timer:countdown";'
         then:
           - lambda: |-
-              ESP_LOGI("timer", "on_timer_tick: UPDATING DISPLAY");
+              ESP_LOGI("timer", "on_timer_tick: UPDATING DISPLAY CONTENT");
               auto remaining_sec = id(timer_seconds_remaining);
               auto total_sec = id(timer_first_active).total_seconds;
               
