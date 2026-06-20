@@ -54,6 +54,7 @@
         height: 40
         text: "30 SEC."
         text_font: montserrat_16
+        text_weight: BOLD
         text_align: CENTER
         align: CENTER
         text_color: ${color_bright_orange}
