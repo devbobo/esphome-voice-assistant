@@ -581,15 +581,15 @@ voice_assistant:
         auto total_sec = id(timer_first_active).total_seconds;
         
         // Update expired timer name
-        auto label_name = (lv_obj_t *)id(ui_expired_timer_name);
-        if (label_name != nullptr) {
+        auto expired_label_name = (lv_obj_t *)id(ui_expired_timer_name);
+        if (expired_label_name != nullptr) {
           std::string name = id(timer_active_name);
-          lv_label_set_text(label_name, name.empty() ? "Timer" : name.c_str());
+          lv_label_set_text(expired_label_name, name.empty() ? "Timer" : name.c_str());
         }
         
         // Update expired timer duration
-        auto label_duration = (lv_obj_t *)id(ui_expired_timer_duration);
-        if (label_duration != nullptr) {
+        auto expired_label_duration = (lv_obj_t *)id(ui_expired_timer_duration);
+        if (expired_label_duration != nullptr) {
           char buf_duration[16];
           if (total_sec >= 3600) {
             uint16_t hours = total_sec / 3600;
@@ -600,17 +600,16 @@ voice_assistant:
           } else {
             snprintf(buf_duration, sizeof(buf_duration), "%u SEC.", total_sec);
           }
-          lv_label_set_text(label_duration, buf_duration);
+          lv_label_set_text(expired_label_duration, buf_duration);
         }
         
         ESP_LOGI("timer", "Showing expired timer page");
-
         
-        auto label_duration = (lv_obj_t *)id(ui_timer_duration);
-        lv_label_set_text(label_duration, "");
+        auto timer_clear_label = (lv_obj_t *)id(ui_timer_duration);
+        lv_label_set_text(timer_clear_label, "");
         
-        auto arc = (lv_obj_t *)id(ui_timer_arc);
-        lv_arc_set_end_angle(arc, 360);
+        auto timer_clear_arc = (lv_obj_t *)id(ui_timer_arc);
+        lv_arc_set_end_angle(timer_clear_arc, 360);
         
         ESP_LOGI("timer", "Display: Timer Expired");
 
