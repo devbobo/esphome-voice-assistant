@@ -180,46 +180,68 @@ script:
   - id: timer_update_display
     then:
       - lambda: |-
+          // Safety-first approach: validate everything before accessing any timer fields
+          id(timer_check_has_active).execute();
+          if (!id(timer_has_active)) {
+            ESP_LOGW("timer", "timer_update_display: no active timers");
+            return;
+          }
+          
+          id(timer_fetch_first_active).execute();
+          if (id(timer_first_active).id.empty()) {
+            ESP_LOGW("timer", "timer_update_display: timer_first_active.id is empty");
+            return;
+          }
+          
+          // NOW safe to access timer fields
           auto total_sec = id(timer_first_active).total_seconds;
           auto remaining_sec = id(timer_first_active).seconds_left;
           
           // Update timer value label
           auto label_timer = (lv_obj_t *)id(ui_timer_value);
-          char buf[16];
-          if (total_sec >= 3600) {
-            uint16_t remaining_h = remaining_sec / 3600;
-            uint16_t remaining_min = (remaining_sec % 3600) / 60;
-            uint16_t remaining_s = remaining_sec % 60;
-            snprintf(buf, sizeof(buf), "%u:%02u:%02u", remaining_h, remaining_min, remaining_s);
-          } else {
-            uint16_t remaining_min = remaining_sec / 60;
-            uint16_t remaining_s = remaining_sec % 60;
-            snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
+          if (label_timer != nullptr) {
+            char buf[16];
+            if (total_sec >= 3600) {
+              uint16_t remaining_h = remaining_sec / 3600;
+              uint16_t remaining_min = (remaining_sec % 3600) / 60;
+              uint16_t remaining_s = remaining_sec % 60;
+              snprintf(buf, sizeof(buf), "%u:%02u:%02u", remaining_h, remaining_min, remaining_s);
+            } else {
+              uint16_t remaining_min = remaining_sec / 60;
+              uint16_t remaining_s = remaining_sec % 60;
+              snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
+            }
+            lv_label_set_text(label_timer, buf);
           }
-          lv_label_set_text(label_timer, buf);
           
           // Update duration label
           auto label_duration = (lv_obj_t *)id(ui_timer_duration);
-          char buf_duration[16];
-          if (total_sec >= 3600) {
-            uint16_t hours = total_sec / 3600;
-            snprintf(buf_duration, sizeof(buf_duration), "%u %s", hours, hours == 1 ? "HR." : "HRS.");
-          } else if (total_sec >= 60) {
-            uint16_t minutes = total_sec / 60;
-            snprintf(buf_duration, sizeof(buf_duration), "%u %s", minutes, minutes == 1 ? "MIN." : "MINS.");
-          } else {
-            snprintf(buf_duration, sizeof(buf_duration), "%u SEC.", total_sec);
+          if (label_duration != nullptr) {
+            char buf_duration[16];
+            if (total_sec >= 3600) {
+              uint16_t hours = total_sec / 3600;
+              snprintf(buf_duration, sizeof(buf_duration), "%u %s", hours, hours == 1 ? "HR." : "HRS.");
+            } else if (total_sec >= 60) {
+              uint16_t minutes = total_sec / 60;
+              snprintf(buf_duration, sizeof(buf_duration), "%u %s", minutes, minutes == 1 ? "MIN." : "MINS.");
+            } else {
+              snprintf(buf_duration, sizeof(buf_duration), "%u SEC.", total_sec);
+            }
+            lv_label_set_text(label_duration, buf_duration);
           }
-          lv_label_set_text(label_duration, buf_duration);
           
           // Update timer name
           auto label_name = (lv_obj_t *)id(ui_timer_name);
-          lv_label_set_text(label_name, id(timer_active_name).empty() ? "Timer" : id(timer_active_name).c_str());
+          if (label_name != nullptr) {
+            lv_label_set_text(label_name, id(timer_active_name).empty() ? "Timer" : id(timer_active_name).c_str());
+          }
           
           // Update progress arc
           auto arc = (lv_obj_t *)id(ui_timer_arc);
-          uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
-          lv_arc_set_end_angle(arc, end_angle);
+          if (arc != nullptr) {
+            uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
+            lv_arc_set_end_angle(arc, end_angle);
+          }
 
   ################################################################################
   ## Timer Display Rendering
@@ -509,18 +531,6 @@ voice_assistant:
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_started}"
-    - script.execute: timer_check_has_active
-    - script.execute: timer_fetch_first_active
-    - lambda: |-
-        if (!id(timer_has_active)) {
-          ESP_LOGW("timer", "on_timer_started: no active timers found, aborting");
-          return;
-        }
-        id(timer_active_id) = id(timer_first_active).id;
-        id(timer_active_name) = id(timer_first_active).name;
-        id(timer_seconds_remaining) = id(timer_first_active).seconds_left;
-        std::string name = id(timer_active_name);
-        ESP_LOGI("timer", "Timer started: %s (%.0f active timers)", name.empty() ? "" : name.c_str(), (float)id(va).get_timers().size());
     - event.trigger:
         id: led_event
         event_type: "processing"
@@ -529,76 +539,15 @@ voice_assistant:
         sound_key: "timer_started"
     - lambda: |-
         id(dm_current_view) = "module_timer:countdown";
-    # Show timer page and render initial state
     - lvgl.page.show: timer_page
-    - lambda: |-
-        if (!id(timer_has_active)) {
-          ESP_LOGW("timer", "on_timer_started display: no active timers, aborting display");
-          return;
-        }
-        auto remaining_sec = id(timer_seconds_remaining);
-        auto total_sec = id(timer_first_active).total_seconds;
-        
-        // Update timer value label (H:MM:SS or MM:SS)
-        auto label_timer = (lv_obj_t *)id(ui_timer_value);
-        char buf[16];
-        
-        if (total_sec >= 3600) {
-          // Format as H:MM:SS
-          uint16_t remaining_h = remaining_sec / 3600;
-          uint16_t remaining_min = (remaining_sec % 3600) / 60;
-          uint16_t remaining_s = remaining_sec % 60;
-          snprintf(buf, sizeof(buf), "%u:%02u:%02u", remaining_h, remaining_min, remaining_s);
-        } else {
-          // Format as MM:SS
-          uint16_t remaining_min = remaining_sec / 60;
-          uint16_t remaining_s = remaining_sec % 60;
-          snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
-        }
-        
-        lv_label_set_text(label_timer, buf);
-        
-        // Update duration hint label
-        auto label_duration = (lv_obj_t *)id(ui_timer_duration);
-        char buf_duration[16];
-        if (total_sec >= 3600) {
-          uint16_t hours = total_sec / 3600;
-          snprintf(buf_duration, sizeof(buf_duration), "%u %s", hours, hours == 1 ? "HR." : "HRS.");
-        } else if (total_sec >= 60) {
-          uint16_t minutes = total_sec / 60;
-          snprintf(buf_duration, sizeof(buf_duration), "%u %s", minutes, minutes == 1 ? "MIN." : "MINS.");
-        } else {
-          snprintf(buf_duration, sizeof(buf_duration), "%u SEC.", total_sec);
-        }
-        lv_label_set_text(label_duration, buf_duration);
-        
-        // Update progress arc (0-360 degrees based on time remaining)
-        auto arc = (lv_obj_t *)id(ui_timer_arc);
-        uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
-        lv_arc_set_end_angle(arc, end_angle);
-        
-        // Update timer name label
-        auto label_name = (lv_obj_t *)id(ui_timer_name);
-        std::string name = id(timer_active_name);
-        lv_label_set_text(label_name, name.empty() ? "Timer" : name.c_str());
-        
-        ESP_LOGI("timer", "Display: Timer started - %s remaining / %u sec total", buf, total_sec);
+    - script.execute: timer_update_display
 
   on_timer_updated:
     - logger.log: "Timer updated"
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_updated}"
-    - script.execute: timer_check_has_active
-    - script.execute: timer_fetch_first_active
-    - lambda: |-
-        if (!id(timer_has_active)) {
-          ESP_LOGW("timer", "on_timer_updated: no active timers found");
-          return;
-        }
-        id(timer_active_id) = id(timer_first_active).id;
-        id(timer_active_name) = id(timer_first_active).name;
-        id(timer_seconds_remaining) = id(timer_first_active).seconds_left;
+    - script.execute: timer_update_display
 
   on_timer_tick:
     - logger.log: "Timer tick"
@@ -606,97 +555,19 @@ voice_assistant:
         id: system_event
         event_type: "${evt_va_timer_tick}"
     - script.execute: timer_check_has_active
-    - lambda: |-
-        if (!id(timer_has_active)) {
-          ESP_LOGW("timer", "on_timer_tick: no active timers");
-          return;
-        }
-        id(timer_seconds_remaining) = id(timer_first_active).seconds_left;
-        ESP_LOGI("timer", "on_timer_tick: seconds_left=%u", id(timer_seconds_remaining));
-    # NOTE: This only updates display CONTENT (labels/arc), never display NAVIGATION
-    # dm_current_view and dm_page_index are NEVER modified by timer ticks
+    # NOTE: Only update display content if timer view is active
+    # Display navigation (dm_current_view, dm_page_index) is NEVER modified by timer ticks
     - if:
         condition:
-          lambda: 'return id(timer_has_active) && id(dm_current_view) == "module_timer:countdown";'
+          lambda: 'return id(dm_current_view) == "module_timer:countdown";'
         then:
-          - lambda: |-
-              ESP_LOGI("timer", "on_timer_tick: UPDATING DISPLAY CONTENT");
-              auto remaining_sec = id(timer_seconds_remaining);
-              auto total_sec = id(timer_first_active).total_seconds;
-              
-              // Update timer value label (H:MM:SS or MM:SS)
-              auto label_timer = (lv_obj_t *)id(ui_timer_value);
-              if (label_timer != nullptr) {
-                char buf[16];
-                
-                if (total_sec >= 3600) {
-                  // Format as H:MM:SS
-                  uint16_t remaining_h = remaining_sec / 3600;
-                  uint16_t remaining_min = (remaining_sec % 3600) / 60;
-                  uint16_t remaining_s = remaining_sec % 60;
-                  snprintf(buf, sizeof(buf), "%u:%02u:%02u", remaining_h, remaining_min, remaining_s);
-                } else {
-                  // Format as MM:SS
-                  uint16_t remaining_min = remaining_sec / 60;
-                  uint16_t remaining_s = remaining_sec % 60;
-                  snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
-                }
-                
-                lv_label_set_text(label_timer, buf);
-                ESP_LOGI("timer", "Updated timer label: %s", buf);
-              } else {
-                ESP_LOGW("timer", "ui_timer_value widget is NULL");
-              }
-              
-              // Update duration hint label
-              auto label_duration = (lv_obj_t *)id(ui_timer_duration);
-              if (label_duration != nullptr) {
-                char buf_duration[16];
-                if (total_sec >= 3600) {
-                  uint16_t hours = total_sec / 3600;
-                  snprintf(buf_duration, sizeof(buf_duration), "%u %s", hours, hours == 1 ? "HR." : "HRS.");
-                } else if (total_sec >= 60) {
-                  uint16_t minutes = total_sec / 60;
-                  snprintf(buf_duration, sizeof(buf_duration), "%u %s", minutes, minutes == 1 ? "MIN." : "MINS.");
-                } else {
-                  snprintf(buf_duration, sizeof(buf_duration), "%u SEC.", total_sec);
-                }
-                lv_label_set_text(label_duration, buf_duration);
-              } else {
-                ESP_LOGW("timer", "ui_timer_duration widget is NULL");
-              }
-              
-              // Update progress arc (0-360 degrees based on time remaining)
-              auto arc = (lv_obj_t *)id(ui_timer_arc);
-              if (arc != nullptr) {
-                uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
-                lv_arc_set_end_angle(arc, end_angle);
-              } else {
-                ESP_LOGW("timer", "ui_timer_arc widget is NULL");
-              }
-              
-              // Update timer name label
-              auto label_name = (lv_obj_t *)id(ui_timer_name);
-              if (label_name != nullptr) {
-                std::string name = id(timer_active_name);
-                lv_label_set_text(label_name, name.empty() ? "Timer" : name.c_str());
-              } else {
-                ESP_LOGW("timer", "ui_timer_name widget is NULL");
-              }
+          - script.execute: timer_update_display
 
   on_timer_finished:
     - logger.log: "Timer finished"
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_finished}"
-    - script.execute: timer_check_has_active
-    - script.execute: timer_fetch_first_active
-    - lambda: |-
-        if (!id(timer_has_active)) {
-          ESP_LOGW("timer", "on_timer_finished: no active timers");
-          return;
-        }
-        ESP_LOGI("timer", "Timer finished: %s (%.0f active timers remaining)", id(timer_first_active).name.c_str(), (float)id(va).get_timers().size());
     - event.trigger:
         id: led_event
         event_type: "timer_done"
@@ -713,46 +584,8 @@ voice_assistant:
         id(dm_current_view) = "module_timer:expired";
     # Show expired timer page
     - lvgl.page.show: expired_timer_page
-    # Update expired timer display labels
-    - lambda: |-
-        if (!id(timer_has_active)) {
-          ESP_LOGW("timer", "on_timer_finished display: no active timers");
-          return;
-        }
-        auto total_sec = id(timer_first_active).total_seconds;
-        
-        // Update expired timer name
-        auto expired_label_name = (lv_obj_t *)id(ui_expired_timer_name);
-        if (expired_label_name != nullptr) {
-          std::string name = id(timer_active_name);
-          lv_label_set_text(expired_label_name, name.empty() ? "Timer" : name.c_str());
-        }
-        
-        // Update expired timer duration
-        auto expired_label_duration = (lv_obj_t *)id(ui_expired_timer_duration);
-        if (expired_label_duration != nullptr) {
-          char buf_duration[16];
-          if (total_sec >= 3600) {
-            uint16_t hours = total_sec / 3600;
-            snprintf(buf_duration, sizeof(buf_duration), "%u %s", hours, hours == 1 ? "HR." : "HRS.");
-          } else if (total_sec >= 60) {
-            uint16_t minutes = total_sec / 60;
-            snprintf(buf_duration, sizeof(buf_duration), "%u %s", minutes, minutes == 1 ? "MIN." : "MINS.");
-          } else {
-            snprintf(buf_duration, sizeof(buf_duration), "%u SEC.", total_sec);
-          }
-          lv_label_set_text(expired_label_duration, buf_duration);
-        }
-        
-        ESP_LOGI("timer", "Showing expired timer page");
-        
-        auto timer_clear_label = (lv_obj_t *)id(ui_timer_duration);
-        lv_label_set_text(timer_clear_label, "");
-        
-        auto timer_clear_arc = (lv_obj_t *)id(ui_timer_arc);
-        lv_arc_set_end_angle(timer_clear_arc, 360);
-        
-        ESP_LOGI("timer", "Display: Timer Expired");
+    # Update display (validation happens inside script)
+    - script.execute: timer_update_display
 
   on_timer_cancelled:
     - logger.log: "Timer cancelled"
@@ -766,22 +599,16 @@ voice_assistant:
           lambda: |-
             return id(timer_has_active);
         then:
-          - script.execute: timer_fetch_first_active
-          - lambda: |-
-              id(timer_active_id) = id(timer_first_active).id;
-              id(timer_active_name) = id(timer_first_active).name;
-              id(timer_seconds_remaining) = id(timer_first_active).seconds_left;
-              ESP_LOGI("timer", "Timer cancelled, now showing: %s", id(timer_active_name).c_str());
+          - logger.log: "Timers still active, showing next"
           - script.execute: timer_update_display
         else:
+          - logger.log: "No timers active, showing empty state"
           - lambda: |-
               id(timer_active_id) = "";
               id(timer_active_name) = "";
               id(timer_seconds_remaining) = 0;
-              ESP_LOGI("timer", "Last timer cancelled - showing no timers page");
-          - lvgl.page.show: no_timers_page
-          - lambda: |-
               id(dm_current_view) = "module_timer:no_timers";
+          - lvgl.page.show: no_timers_page
           - event.trigger:
               id: led_event
               event_type: "idle"
