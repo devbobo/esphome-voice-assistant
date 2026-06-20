@@ -8,6 +8,12 @@ substitutions:
   detail_card_x: "72"
   detail_card_y: "246"
   detail_card_width: "216"
+  # Timer arc positioning (centered, 200x200 on 360x360 display)
+  timer_arc_size: "200"
+  timer_arc_x: "80"  # (display_width - timer_arc_size) / 2
+  timer_arc_y: "80"  # (display_height - timer_arc_size) / 2
+  timer_value_y: "145"
+  timer_duration_y: "215"
 
 packages:
   common: !include common.yaml
