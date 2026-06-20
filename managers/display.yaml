@@ -72,6 +72,12 @@ script:
 
           id(dm_show_startup) = false;
 
+          // Preserve timer view when timer is active
+          if (id(timer_has_active) && id(dm_current_view).find("module_timer:") == 0) {
+            ESP_LOGD("display", "Preserving timer view: %s", id(dm_current_view).c_str());
+            return;
+          }
+
           if (id(dm_detail_mode)) {
             id(dm_current_view) = "detail_" + id(dm_assistant_state);
             return;

@@ -27,7 +27,7 @@
         end_angle: 360
         rotation: 270
         arc_width: 5
-        arc_color: 0x20A6FF
+        arc_color: ${color_bright_orange}
         bg_color: 0x1F2638
         border_width: 0
     # Timer value (center text - MM:SS format)
@@ -40,7 +40,7 @@
         text: "0:00"
         text_font: montserrat_48
         align: CENTER
-        text_color: 0xFFFFFF
+        text_color: ${color_white}
     # Timer duration hint (below timer)
     - label:
         id: ui_timer_duration
@@ -51,4 +51,4 @@
         text: "30 SEC."
         text_font: montserrat_16
         align: CENTER
-        text_color: 0xFFA500
+        text_color: ${color_bright_orange}

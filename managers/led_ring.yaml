@@ -35,23 +35,25 @@ substitutions:
   led_event_error: "error"
 
   # Color Palette - Base hex values
-  led_color_brown: "0x8B6A2A"
-  led_color_blue: "0x20A6FF"
-  led_color_dark_blue: "0x343D52"
-  led_color_green: "0x47D27B"
-  led_color_bright_green: "0x00FF00"
-  led_color_orange: "0xFFA500"
-  led_color_bright_orange: "0xFF8800"
-  led_color_red: "0xDE4A4A"
+  color_brown: "0x8B6A2A"
+  color_blue: "0x20A6FF"
+  color_dark_blue: "0x343D52"
+  color_green: "0x47D27B"
+  color_bright_green: "0x00FF00"
+  color_orange: "0xFFA500"
+  color_bright_orange: "0xFF8800"
+  color_red: "0xDE4A4A"
+  color_white: "0xFFFFFF"
+  color_black: "0x000000"
 
   # State-specific colors (reference palette for easy customization)
-  led_color_not_connected: ${led_color_brown}
-  led_color_wake_word_detected: ${led_color_blue}
-  led_color_idle: ${led_color_dark_blue}
-  led_color_listening: ${led_color_green}
-  led_color_processing: ${led_color_bright_green}
-  led_color_muted: ${led_color_red}
-  led_color_error: ${led_color_red}
+  led_color_not_connected: ${color_brown}
+  led_color_wake_word_detected: ${color_blue}
+  led_color_idle: ${color_dark_blue}
+  led_color_listening: ${color_green}
+  led_color_processing: ${color_bright_green}
+  led_color_muted: ${color_red}
+  led_color_error: ${color_red}
 
 ## LED State Tracking
 globals:
