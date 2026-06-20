@@ -28,8 +28,9 @@
         rotation: 270
         arc_width: 5
         arc_color: ${color_light_gray}
-        indicator_color: ${color_bright_orange}
-        indicator_width: 5
+        indicator:
+          arc_color: ${color_bright_orange}
+          arc_width: 5
         # bg_color: ${color_bright_orange}
         border_width: 0
     # Timer value (center text - MM:SS format)
