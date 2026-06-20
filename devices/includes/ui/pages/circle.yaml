@@ -125,3 +125,19 @@
         text_align: CENTER
         align: CENTER
         text_color: ${color_black}
+
+- id: no_timers_page
+  bg_color: ${color_black}
+  widgets:
+    # No active timers message
+    - label:
+        id: ui_no_timers_label
+        x: 50
+        y: 160
+        width: 260
+        height: 40
+        text: "No Active Timers"
+        text_font: montserrat_24
+        text_align: CENTER
+        align: CENTER
+        text_color: ${color_light_gray}

@@ -749,12 +749,16 @@ voice_assistant:
               id(timer_active_name) = id(timer_first_active).name;
               id(timer_seconds_remaining) = id(timer_first_active).seconds_left;
               ESP_LOGI("timer", "Timer cancelled, now showing: %s", id(timer_active_name).c_str());
+          - script.execute: timer_update_display
         else:
           - lambda: |-
               id(timer_active_id) = "";
               id(timer_active_name) = "";
               id(timer_seconds_remaining) = 0;
-              ESP_LOGI("timer", "Last timer cancelled");
+              ESP_LOGI("timer", "Last timer cancelled - showing no timers page");
+          - lvgl.page.show: no_timers_page
+          - lambda: |-
+              id(dm_current_view) = "module_timer:no_timers";
           - event.trigger:
               id: led_event
               event_type: "idle"
