@@ -45,7 +45,6 @@
         text_font: montserrat_48
         align: CENTER
         text_color: ${color_white}
-        bg_color: transparent
     # Timer duration hint (below timer)
     - label:
         id: ui_timer_duration
@@ -58,4 +57,3 @@
         text_align: CENTER
         align: CENTER
         text_color: ${color_bright_orange}
-        bg_color: transparent
