@@ -40,7 +40,7 @@ substitutions:
   color_dark_blue: "0x343D52"
   color_green: "0x47D27B"
   color_bright_green: "0x00FF00"
-  color_orange: "0xFFA500"
+  color_orange: "0xFD6000" #"0xFFA500"
   color_bright_orange: "0xFF8800"
   color_red: "0xDE4A4A"
   color_white: "0xFFFFFF"
