@@ -431,7 +431,15 @@ voice_assistant:
         // Update duration hint label
         auto label_duration = (lv_obj_t *)id(ui_timer_duration);
         char buf_duration[16];
-        snprintf(buf_duration, sizeof(buf_duration), "%u SEC.", total_sec);
+        if (total_sec >= 3600) {
+          uint16_t hours = total_sec / 3600;
+          snprintf(buf_duration, sizeof(buf_duration), "%u %s", hours, hours == 1 ? "HR." : "HRS.");
+        } else if (total_sec >= 60) {
+          uint16_t minutes = total_sec / 60;
+          snprintf(buf_duration, sizeof(buf_duration), "%u %s", minutes, minutes == 1 ? "MIN." : "MINS.");
+        } else {
+          snprintf(buf_duration, sizeof(buf_duration), "%u SEC.", total_sec);
+        }
         lv_label_set_text(label_duration, buf_duration);
         
         // Update progress arc (0-360 degrees based on time remaining)
@@ -511,7 +519,15 @@ voice_assistant:
               auto label_duration = (lv_obj_t *)id(ui_timer_duration);
               if (label_duration != nullptr) {
                 char buf_duration[16];
-                snprintf(buf_duration, sizeof(buf_duration), "%u SEC.", total_sec);
+                if (total_sec >= 3600) {
+                  uint16_t hours = total_sec / 3600;
+                  snprintf(buf_duration, sizeof(buf_duration), "%u %s", hours, hours == 1 ? "HR." : "HRS.");
+                } else if (total_sec >= 60) {
+                  uint16_t minutes = total_sec / 60;
+                  snprintf(buf_duration, sizeof(buf_duration), "%u %s", minutes, minutes == 1 ? "MIN." : "MINS.");
+                } else {
+                  snprintf(buf_duration, sizeof(buf_duration), "%u SEC.", total_sec);
+                }
                 lv_label_set_text(label_duration, buf_duration);
               } else {
                 ESP_LOGW("timer", "ui_timer_duration widget is NULL");

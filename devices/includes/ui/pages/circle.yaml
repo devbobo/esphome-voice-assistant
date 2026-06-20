@@ -27,9 +27,9 @@
         end_angle: 360
         rotation: 270
         arc_width: 5
-        arc_color: ${color_light_gray}
+        arc_color: ${color_dark_gray}
         indicator:
-          arc_color: ${color_bright_orange}
+          arc_color: ${color_orange}
           arc_width: 5
         # bg_color: ${color_bright_orange}
         border_width: 0
