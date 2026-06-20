@@ -68,4 +68,4 @@
         text_font: montserrat_24
         text_align: CENTER
         align: CENTER
-        text_color: ${color_bright_orange}
+        text_color: ${color_orange}
