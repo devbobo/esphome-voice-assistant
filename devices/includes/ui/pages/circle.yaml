@@ -33,7 +33,19 @@
           arc_width: 5
         # bg_color: ${color_bright_orange}
         border_width: 0
-    # Timer value (center text - MM:SS format)
+    # Timer name (above timer value)
+    - label:
+        id: ui_timer_name
+        x: ${timer_value_x}
+        y: ${timer_name_y}
+        width: 200
+        height: 40
+        text: "Timer"
+        text_font: montserrat_24
+        text_align: CENTER
+        align: CENTER
+        text_color: ${color_bright_orange}
+    # Timer value (center text - MM:SS or H:MM:SS format)
     - label:
         id: ui_timer_value
         x: ${timer_value_x}

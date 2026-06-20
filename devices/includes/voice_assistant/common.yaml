@@ -439,6 +439,11 @@ voice_assistant:
         uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
         lv_arc_set_end_angle(arc, end_angle);
         
+        // Update timer name label
+        auto label_name = (lv_obj_t *)id(ui_timer_name);
+        std::string name = id(timer_active_name);
+        lv_label_set_text(label_name, name.empty() ? "Timer" : name.c_str());
+        
         ESP_LOGI("timer", "Display: Timer started - %s remaining / %u sec total", buf, total_sec);
 
   on_timer_updated:
@@ -519,6 +524,15 @@ voice_assistant:
                 lv_arc_set_end_angle(arc, end_angle);
               } else {
                 ESP_LOGW("timer", "ui_timer_arc widget is NULL");
+              }
+              
+              // Update timer name label
+              auto label_name = (lv_obj_t *)id(ui_timer_name);
+              if (label_name != nullptr) {
+                std::string name = id(timer_active_name);
+                lv_label_set_text(label_name, name.empty() ? "Timer" : name.c_str());
+              } else {
+                ESP_LOGW("timer", "ui_timer_name widget is NULL");
               }
 
   on_timer_finished:
