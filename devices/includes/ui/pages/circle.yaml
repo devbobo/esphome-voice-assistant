@@ -26,7 +26,7 @@
         start_angle: 0
         end_angle: 360
         rotation: 270
-        arc_width: 20
+        arc_width: 5
         arc_color: 0x20A6FF
         bg_color: 0x1F2638
         border_width: 0

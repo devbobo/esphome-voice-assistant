@@ -443,6 +443,8 @@ voice_assistant:
 
   on_timer_tick:
     - logger.log: "Timer tick"
+    - lambda: |-
+        ESP_LOGI("timer", "on_timer_tick: dm_current_view='%s'", id(dm_current_view).c_str());
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_tick}"
@@ -450,12 +452,14 @@ voice_assistant:
     - script.execute: timer_fetch_first_active
     - lambda: |-
         id(timer_seconds_remaining) = id(timer_first_active).seconds_left;
+        ESP_LOGI("timer", "on_timer_tick: seconds_left=%u", id(timer_seconds_remaining));
     # Update display on each tick if countdown view is active
     - if:
         condition:
           lambda: 'return id(dm_current_view) == "module_timer:countdown";'
         then:
           - lambda: |-
+              ESP_LOGI("timer", "on_timer_tick: UPDATING DISPLAY");
               auto remaining_sec = id(timer_seconds_remaining);
               auto total_sec = id(timer_first_active).total_seconds;
               
@@ -467,6 +471,9 @@ voice_assistant:
                 uint16_t remaining_s = remaining_sec % 60;
                 snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
                 lv_label_set_text(label_timer, buf);
+                ESP_LOGI("timer", "Updated timer label: %s", buf);
+              } else {
+                ESP_LOGW("timer", "ui_timer_value widget is NULL");
               }
               
               // Update duration hint label
@@ -475,6 +482,8 @@ voice_assistant:
                 char buf_duration[16];
                 snprintf(buf_duration, sizeof(buf_duration), "%u SEC.", total_sec);
                 lv_label_set_text(label_duration, buf_duration);
+              } else {
+                ESP_LOGW("timer", "ui_timer_duration widget is NULL");
               }
               
               // Update progress arc (0-360 degrees based on time remaining)
@@ -482,6 +491,8 @@ voice_assistant:
               if (arc != nullptr) {
                 uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
                 lv_arc_set_end_angle(arc, end_angle);
+              } else {
+                ESP_LOGW("timer", "ui_timer_arc widget is NULL");
               }
 
   on_timer_finished:
