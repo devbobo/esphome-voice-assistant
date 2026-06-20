@@ -439,7 +439,7 @@ voice_assistant:
         uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
         lv_arc_set_end_angle(arc, end_angle);
         
-        ESP_LOGI("timer", "Display: Timer started - %u:%02u remaining / %u sec total", remaining_min, remaining_s, total_sec);
+        ESP_LOGI("timer", "Display: Timer started - %s remaining / %u sec total", buf, total_sec);
 
   on_timer_updated:
     - logger.log: "Timer updated"
