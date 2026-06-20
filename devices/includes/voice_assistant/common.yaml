@@ -99,6 +99,125 @@ script:
           const auto &timers = id(va).get_timers();
           id(timer_has_any) = !timers.empty();
 
+  - id: timer_navigate_next
+    then:
+      - lambda: |-
+          const auto &timers = id(va).get_timers();
+          if (timers.empty()) return;
+          
+          // Find next active timer
+          bool found_current = false;
+          esphome::voice_assistant::Timer *next_timer = nullptr;
+          
+          for (const auto &timer : timers) {
+            if (!timer.is_active) continue;
+            if (found_current) {
+              next_timer = (esphome::voice_assistant::Timer *)&timer;
+              break;
+            }
+            if (timer.id == id(timer_first_active).id) {
+              found_current = true;
+            }
+          }
+          
+          // Wrap to first active timer
+          if (next_timer == nullptr) {
+            for (const auto &timer : timers) {
+              if (timer.is_active) {
+                next_timer = (esphome::voice_assistant::Timer *)&timer;
+                break;
+              }
+            }
+          }
+          
+          if (next_timer != nullptr) {
+            id(timer_first_active) = *next_timer;
+            id(timer_active_name) = next_timer->name;
+            ESP_LOGI("timer", "Navigate to next timer: %s", next_timer->name.c_str());
+          }
+      - script.execute: timer_update_display
+
+  - id: timer_navigate_prev
+    then:
+      - lambda: |-
+          const auto &timers = id(va).get_timers();
+          if (timers.empty()) return;
+          
+          // Find previous active timer
+          esphome::voice_assistant::Timer *prev_timer = nullptr;
+          esphome::voice_assistant::Timer *last_timer = nullptr;
+          
+          for (const auto &timer : timers) {
+            if (!timer.is_active) continue;
+            if (timer.id == id(timer_first_active).id) {
+              if (prev_timer != nullptr) {
+                last_timer = prev_timer;
+              }
+              break;
+            }
+            prev_timer = (esphome::voice_assistant::Timer *)&timer;
+          }
+          
+          // Use last found timer (wrap around) or fall back to last active timer
+          if (last_timer == nullptr) {
+            for (const auto &timer : timers) {
+              if (timer.is_active) {
+                last_timer = (esphome::voice_assistant::Timer *)&timer;
+              }
+            }
+          }
+          
+          if (last_timer != nullptr) {
+            id(timer_first_active) = *last_timer;
+            id(timer_active_name) = last_timer->name;
+            ESP_LOGI("timer", "Navigate to prev timer: %s", last_timer->name.c_str());
+          }
+      - script.execute: timer_update_display
+
+  - id: timer_update_display
+    then:
+      - lambda: |-
+          auto total_sec = id(timer_first_active).total_seconds;
+          auto remaining_sec = id(timer_first_active).seconds_left;
+          
+          // Update timer value label
+          auto label_timer = (lv_obj_t *)id(ui_timer_value);
+          char buf[16];
+          if (total_sec >= 3600) {
+            uint16_t remaining_h = remaining_sec / 3600;
+            uint16_t remaining_min = (remaining_sec % 3600) / 60;
+            uint16_t remaining_s = remaining_sec % 60;
+            snprintf(buf, sizeof(buf), "%u:%02u:%02u", remaining_h, remaining_min, remaining_s);
+          } else {
+            uint16_t remaining_min = remaining_sec / 60;
+            uint16_t remaining_s = remaining_sec % 60;
+            snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
+          }
+          lv_label_set_text(label_timer, buf);
+          
+          // Update duration label
+          auto label_duration = (lv_obj_t *)id(ui_timer_duration);
+          char buf_duration[16];
+          if (total_sec >= 3600) {
+            uint16_t hours = total_sec / 3600;
+            snprintf(buf_duration, sizeof(buf_duration), "%u %s", hours, hours == 1 ? "HR." : "HRS.");
+          } else if (total_sec >= 60) {
+            uint16_t minutes = total_sec / 60;
+            snprintf(buf_duration, sizeof(buf_duration), "%u %s", minutes, minutes == 1 ? "MIN." : "MINS.");
+          } else {
+            snprintf(buf_duration, sizeof(buf_duration), "%u SEC.", total_sec);
+          }
+          lv_label_set_text(label_duration, buf_duration);
+          
+          // Update timer name
+          auto label_name = (lv_obj_t *)id(ui_timer_name);
+          lv_label_set_text(label_name, id(timer_active_name).empty() ? "Timer" : id(timer_active_name).c_str());
+          
+          // Update progress arc
+          auto arc = (lv_obj_t *)id(ui_timer_arc);
+          uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
+          lv_arc_set_end_angle(arc, end_angle);
+
   ################################################################################
   ## Timer Display Rendering
   ################################################################################
