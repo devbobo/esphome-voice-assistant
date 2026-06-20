@@ -33,6 +33,7 @@ substitutions:
   led_event_processing: "processing"
   led_event_idle: "idle"
   led_event_error: "error"
+  led_event_timer_done: "timer_done"
 
   # Color Palette - Base hex values
   color_brown: "0x8B6A2A"
@@ -57,6 +58,7 @@ substitutions:
   led_color_processing: ${color_bright_green}
   led_color_muted: ${color_red}
   led_color_error: ${color_red}
+  led_color_timer_done: ${color_bright_orange}
 
 ## LED State Tracking
 globals:
@@ -162,6 +164,7 @@ event:
       - ${led_event_processing}
       - ${led_event_idle}
       - ${led_event_error}
+      - ${led_event_timer_done}
     on_event:
       - lambda: |-
           id(led_ring_state) = event_type;

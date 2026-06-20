@@ -562,7 +562,7 @@ voice_assistant:
         ESP_LOGI("timer", "Timer finished: %s (%.0f active timers remaining)", id(timer_first_active).name.c_str(), (float)id(va).get_timers().size());
     - event.trigger:
         id: led_event
-        event_type: "error"
+        event_type: "timer_done"
     # Conditionally stop listening if hardware shares I2S bus
     - if:
         condition:
