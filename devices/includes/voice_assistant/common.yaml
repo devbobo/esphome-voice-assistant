@@ -187,7 +187,7 @@ script:
             return;
           }
           
-          id(timer_fetch_first_active).execute();
+          // Don't refetch - use the currently selected timer (set by navigation or event handlers)
           if (id(timer_first_active).id.empty()) {
             ESP_LOGW("timer", "timer_update_display: timer_first_active.id is empty");
             return;
@@ -538,6 +538,7 @@ voice_assistant:
     - script.execute:
         id: audio_queue_sound
         sound_key: "timer_started"
+    - script.execute: timer_fetch_first_active
     - lambda: |-
         id(dm_current_view) = "module_timer:countdown";
     - lvgl.page.show: timer_page
@@ -548,6 +549,7 @@ voice_assistant:
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_updated}"
+    - script.execute: timer_fetch_first_active
     - script.execute: timer_update_display
 
   on_timer_tick:
