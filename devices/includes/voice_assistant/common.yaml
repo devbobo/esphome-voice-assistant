@@ -574,10 +574,37 @@ voice_assistant:
     - script.execute: timer_play_looping_alarm
     - lambda: |-
         id(dm_current_view) = "module_timer:expired";
-    # Update display to show expired state
+    # Show expired timer page
+    - lvgl.page.show: expired_timer_page
+    # Update expired timer display labels
     - lambda: |-
-        auto label_timer = (lv_obj_t *)id(ui_timer_value);
-        lv_label_set_text(label_timer, "EXPIRED");
+        auto total_sec = id(timer_first_active).total_seconds;
+        
+        // Update expired timer name
+        auto label_name = (lv_obj_t *)id(ui_expired_timer_name);
+        if (label_name != nullptr) {
+          std::string name = id(timer_active_name);
+          lv_label_set_text(label_name, name.empty() ? "Timer" : name.c_str());
+        }
+        
+        // Update expired timer duration
+        auto label_duration = (lv_obj_t *)id(ui_expired_timer_duration);
+        if (label_duration != nullptr) {
+          char buf_duration[16];
+          if (total_sec >= 3600) {
+            uint16_t hours = total_sec / 3600;
+            snprintf(buf_duration, sizeof(buf_duration), "%u %s", hours, hours == 1 ? "HR." : "HRS.");
+          } else if (total_sec >= 60) {
+            uint16_t minutes = total_sec / 60;
+            snprintf(buf_duration, sizeof(buf_duration), "%u %s", minutes, minutes == 1 ? "MIN." : "MINS.");
+          } else {
+            snprintf(buf_duration, sizeof(buf_duration), "%u SEC.", total_sec);
+          }
+          lv_label_set_text(label_duration, buf_duration);
+        }
+        
+        ESP_LOGI("timer", "Showing expired timer page");
+
         
         auto label_duration = (lv_obj_t *)id(ui_timer_duration);
         lv_label_set_text(label_duration, "");

@@ -14,7 +14,7 @@
         hidden: true
 
 - id: timer_page
-  bg_color: 0x06080E
+  bg_color: ${color_black}
   widgets:
     # Circular progress arc (timer ring)
     - arc:
@@ -69,3 +69,60 @@
         text_align: CENTER
         align: CENTER
         text_color: ${color_orange}
+
+- id: expired_timer_page
+  bg_color: ${color_orange}
+  widgets:
+    # Circular progress arc (timer ring)
+    - arc:
+        id: ui_expired_timer_arc
+        x: ${timer_arc_x}
+        y: ${timer_arc_y}
+        width: ${timer_arc_size}
+        height: ${timer_arc_size}
+        start_angle: 0
+        end_angle: 360
+        rotation: 270
+        arc_width: 5
+        arc_color: ${color_dark_gray}
+        indicator:
+          arc_color: ${color_dark_gray}
+          arc_width: 5
+        # bg_color: ${color_bright_orange}
+        border_width: 0
+    # Timer name (above timer value)
+    - label:
+        id: ui_expired_timer_name
+        x: ${timer_value_x}
+        y: ${timer_name_y}
+        width: 200
+        height: 40
+        text: "Timer"
+        text_font: montserrat_24
+        text_align: CENTER
+        align: CENTER
+        text_color: ${color_black}
+    # Timer value (center text - MM:SS or H:MM:SS format)
+    - label:
+        id: ui_expired_timer_value
+        x: ${timer_value_x}
+        y: ${timer_value_y}
+        width: 200
+        # height: 70
+        text: "Done"
+        text_align: CENTER
+        text_font: montserrat_60
+        align: CENTER
+        text_color: ${color_white}
+    # Timer duration hint (below timer)
+    - label:
+        id: ui_expired_timer_duration
+        x: ${timer_value_x}
+        y: ${timer_duration_y}
+        width: 200
+        height: 40
+        text: "30 SEC."
+        text_font: montserrat_24
+        text_align: CENTER
+        align: CENTER
+        text_color: ${color_black}
