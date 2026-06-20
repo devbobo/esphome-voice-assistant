@@ -459,7 +459,10 @@ sensor:
     lambda: |-
       id(timer_check_has_active).execute();
       if (id(timer_has_active)) {
-        id(timer_fetch_first_active).execute();
+        // Read from currently selected timer (set by navigation/events), DON'T refetch
+        if (id(timer_first_active).id.empty()) {
+          return 0.0f;
+        }
         return (float)id(timer_first_active).seconds_left;
       }
       return 0.0f;
