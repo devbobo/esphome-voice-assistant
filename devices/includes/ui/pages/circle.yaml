@@ -36,7 +36,7 @@
     # Timer value (center text - MM:SS format)
     - label:
         id: ui_timer_value
-        x: 80
+        x: ${timer_value_x}
         y: ${timer_value_y}
         width: 200
         height: 70
@@ -47,7 +47,7 @@
     # Timer duration hint (below timer)
     - label:
         id: ui_timer_duration
-        x: 80
+        x: ${timer_value_x}
         y: ${timer_duration_y}
         width: 200
         height: 40
