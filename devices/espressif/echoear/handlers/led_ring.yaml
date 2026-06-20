@@ -8,6 +8,9 @@
       if (id(led_ring_state) == "${led_event_not_connected}") {
         return lv_color_hex(${led_color_not_connected});
       }
+      if (id(led_ring_state) == "${led_event_wake_word_detected}") {
+        return lv_color_hex(${led_color_wake_word_detected});
+      }
       if (id(led_ring_state) == "${led_event_listening}") {
         return lv_color_hex(${led_color_listening});
       }
