@@ -105,12 +105,14 @@ script:
           const auto &timers = id(va).get_timers();
           if (timers.empty()) return;
           
-          // Find next active timer
-          bool found_current = false;
           esphome::voice_assistant::Timer *next_timer = nullptr;
+          esphome::voice_assistant::Timer *first_active = nullptr;
+          bool found_current = false;
           
+          // First pass: find next timer after current, track first active
           for (const auto &timer : timers) {
             if (!timer.is_active) continue;
+            if (first_active == nullptr) first_active = (esphome::voice_assistant::Timer *)&timer;
             if (found_current) {
               next_timer = (esphome::voice_assistant::Timer *)&timer;
               break;
@@ -120,14 +122,9 @@ script:
             }
           }
           
-          // Wrap to first active timer
+          // Wrap to first active if needed
           if (next_timer == nullptr) {
-            for (const auto &timer : timers) {
-              if (timer.is_active) {
-                next_timer = (esphome::voice_assistant::Timer *)&timer;
-                break;
-              }
-            }
+            next_timer = first_active;
           }
           
           if (next_timer != nullptr) {
@@ -143,34 +140,40 @@ script:
           const auto &timers = id(va).get_timers();
           if (timers.empty()) return;
           
-          // Find previous active timer
           esphome::voice_assistant::Timer *prev_timer = nullptr;
-          esphome::voice_assistant::Timer *last_timer = nullptr;
+          esphome::voice_assistant::Timer *last_active = nullptr;
           
+          // Single pass: track previous timer and last active
           for (const auto &timer : timers) {
             if (!timer.is_active) continue;
+            
             if (timer.id == id(timer_first_active).id) {
+              // Found current timer - use previous if available, else wrap to last_active
               if (prev_timer != nullptr) {
-                last_timer = prev_timer;
+                last_active = prev_timer;
               }
               break;
             }
+            
+            // Keep track of last active timer seen so far
             prev_timer = (esphome::voice_assistant::Timer *)&timer;
+            last_active = prev_timer;
           }
           
-          // Use last found timer (wrap around) or fall back to last active timer
-          if (last_timer == nullptr) {
+          // If no previous timer was set (at first), last_active is already the last timer
+          if (last_active == nullptr) {
+            // Current timer is first, find the actual last active
             for (const auto &timer : timers) {
               if (timer.is_active) {
-                last_timer = (esphome::voice_assistant::Timer *)&timer;
+                last_active = (esphome::voice_assistant::Timer *)&timer;
               }
             }
           }
           
-          if (last_timer != nullptr) {
-            id(timer_first_active) = *last_timer;
-            id(timer_active_name) = last_timer->name;
-            ESP_LOGI("timer", "Navigate to prev timer: %s", last_timer->name.c_str());
+          if (last_active != nullptr) {
+            id(timer_first_active) = *last_active;
+            id(timer_active_name) = last_active->name;
+            ESP_LOGI("timer", "Navigate to prev timer: %s", last_active->name.c_str());
           }
       - script.execute: timer_update_display
 

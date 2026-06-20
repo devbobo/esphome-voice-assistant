@@ -132,8 +132,8 @@
     # No active timers message
     - label:
         id: ui_no_timers_label
-        x: 50
-        y: 160
+        x: 0
+        y: 0
         width: 260
         height: 40
         text: "No Active Timers"
