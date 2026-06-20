@@ -8,13 +8,13 @@ substitutions:
   detail_card_x: "72"
   detail_card_y: "246"
   detail_card_width: "216"
-  # Timer arc positioning (centered, 220x220 on 360x360 display)
-  timer_arc_size: "220"
-  timer_arc_x: "70"  # (display_width - timer_arc_size) / 2
-  timer_arc_y: "70"  # (display_height - timer_arc_size) / 2
+  # Timer arc positioning (centered, 250x250 on 360x360 display)
+  timer_arc_size: "250"
+  timer_arc_x: "55"  # (display_width - timer_arc_size) / 2
+  timer_arc_y: "55"  # (display_height - timer_arc_size) / 2
   timer_value_x: "0"  # Center labels horizontally with arc
   timer_value_y: "0"  # Inside arc vertically
-  timer_duration_y: "70"  # Below arc
+  timer_duration_y: "30"  # Below arc
 
 packages:
   common: !include common.yaml
