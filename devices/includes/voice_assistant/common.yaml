@@ -54,6 +54,66 @@ script:
   ################################################################################
   ## Timer State & Management Scripts
   ################################################################################
+  - id: timer_update_current_tick
+    then:
+      - lambda: |-
+          // Find the currently viewed timer by ID and update its remaining_sec from the live timer list
+          const auto &timers = id(va).get_timers();
+          const std::string current_id = id(timer_first_active).id;
+          
+          if (current_id.empty()) {
+            ESP_LOGW("timer", "timer_update_current_tick: current timer ID is empty");
+            return;
+          }
+          
+          // Find the timer with matching ID in the live list and copy fresh data
+          uint32_t fresh_seconds_left = 0;
+          bool found = false;
+          
+          for (const auto &timer : timers) {
+            if (timer.id == current_id) {
+              fresh_seconds_left = timer.seconds_left;
+              found = true;
+              break;
+            }
+          }
+          
+          if (!found) {
+            ESP_LOGW("timer", "timer_update_current_tick: current timer not found in live list");
+            return;
+          }
+          
+          // Update the cached copy with fresh remaining time
+          id(timer_first_active).seconds_left = fresh_seconds_left;
+          
+          // Now update display with fresh remaining time
+          auto total_sec = id(timer_first_active).total_seconds;
+          auto remaining_sec = id(timer_first_active).seconds_left;
+          
+          // Update timer value label
+          auto label_timer = (lv_obj_t *)id(ui_timer_value);
+          if (label_timer != nullptr) {
+            char buf[16];
+            if (total_sec >= 3600) {
+              uint16_t remaining_h = remaining_sec / 3600;
+              uint16_t remaining_min = (remaining_sec % 3600) / 60;
+              uint16_t remaining_s = remaining_sec % 60;
+              snprintf(buf, sizeof(buf), "%u:%02u:%02u", remaining_h, remaining_min, remaining_s);
+            } else {
+              uint16_t remaining_min = remaining_sec / 60;
+              uint16_t remaining_s = remaining_sec % 60;
+              snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
+            }
+            lv_label_set_text(label_timer, buf);
+          }
+          
+          // Update progress arc with fresh remaining time
+          auto arc = (lv_obj_t *)id(ui_timer_arc);
+          if (arc != nullptr) {
+            uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
+            lv_arc_set_end_angle(arc, end_angle);
+          }
+
   - id: timer_fetch_first_active
     then:
       - lambda: |-
@@ -66,6 +126,19 @@ script:
             }
           }
           id(timer_first_active) = output_timer;
+
+  - id: timer_fetch_newest_active
+    then:
+      - lambda: |-
+          const auto &timers = id(va).get_timers();
+          if (timers.empty()) return;
+          auto newest_timer = *timers.begin();
+          for (const auto &timer : timers) {
+            if (timer.is_active && timer.seconds_left >= newest_timer.seconds_left) {
+              newest_timer = timer;
+            }
+          }
+          id(timer_first_active) = newest_timer;
 
   - id: timer_check_has_active
     then:
@@ -538,7 +611,7 @@ voice_assistant:
     - script.execute:
         id: audio_queue_sound
         sound_key: "timer_started"
-    - script.execute: timer_fetch_first_active
+    - script.execute: timer_fetch_newest_active
     - lambda: |-
         id(dm_current_view) = "module_timer:countdown";
     - lvgl.page.show: timer_page
@@ -564,7 +637,7 @@ voice_assistant:
         condition:
           lambda: 'return id(dm_current_view) == "module_timer:countdown";'
         then:
-          - script.execute: timer_update_display
+          - script.execute: timer_update_current_tick
 
   on_timer_finished:
     - logger.log: "Timer finished"
