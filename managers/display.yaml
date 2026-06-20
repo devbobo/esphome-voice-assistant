@@ -161,19 +161,7 @@ script:
       ##   → Extract module "timer", page "countdown"
       ##   → Call timer_render_countdown()
       ########################################################################
-      # Module display page routing
-      # When dm_current_view is "module_timer:countdown", call timer_render_countdown
-      - if:
-          condition:
-            lambda: 'return id(dm_current_view) == "module_timer:countdown";'
-          then:
-            - script.execute: timer_render_countdown
-      
-      - if:
-          condition:
-            lambda: 'return id(dm_current_view) == "module_timer:expired";'
-          then:
-            - script.execute: timer_render_expired
+      # Module display page routing is handled via on_timer_tick in common.yaml
 
 interval:
   - interval: 250ms

@@ -230,7 +230,3 @@ packages:
   touchscreen_manager: !include managers/touchscreen.yaml
   display_manager: !include managers/display.yaml
 
-  # Modules - Self-contained functionality extensions
-  # Uncomment to enable modules. See modules/README.md for details.
-  # module_timer: !include modules/timer/module.yaml
-  # module_weather: !include modules/weather/module.yaml
