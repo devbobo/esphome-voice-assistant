@@ -512,6 +512,10 @@ voice_assistant:
     - script.execute: timer_check_has_active
     - script.execute: timer_fetch_first_active
     - lambda: |-
+        if (!id(timer_has_active)) {
+          ESP_LOGW("timer", "on_timer_started: no active timers found, aborting");
+          return;
+        }
         id(timer_active_id) = id(timer_first_active).id;
         id(timer_active_name) = id(timer_first_active).name;
         id(timer_seconds_remaining) = id(timer_first_active).seconds_left;
@@ -528,6 +532,10 @@ voice_assistant:
     # Show timer page and render initial state
     - lvgl.page.show: timer_page
     - lambda: |-
+        if (!id(timer_has_active)) {
+          ESP_LOGW("timer", "on_timer_started display: no active timers, aborting display");
+          return;
+        }
         auto remaining_sec = id(timer_seconds_remaining);
         auto total_sec = id(timer_first_active).total_seconds;
         
@@ -584,6 +592,10 @@ voice_assistant:
     - script.execute: timer_check_has_active
     - script.execute: timer_fetch_first_active
     - lambda: |-
+        if (!id(timer_has_active)) {
+          ESP_LOGW("timer", "on_timer_updated: no active timers found");
+          return;
+        }
         id(timer_active_id) = id(timer_first_active).id;
         id(timer_active_name) = id(timer_first_active).name;
         id(timer_seconds_remaining) = id(timer_first_active).seconds_left;
@@ -595,13 +607,17 @@ voice_assistant:
         event_type: "${evt_va_timer_tick}"
     - script.execute: timer_check_has_active
     - lambda: |-
+        if (!id(timer_has_active)) {
+          ESP_LOGW("timer", "on_timer_tick: no active timers");
+          return;
+        }
         id(timer_seconds_remaining) = id(timer_first_active).seconds_left;
         ESP_LOGI("timer", "on_timer_tick: seconds_left=%u", id(timer_seconds_remaining));
     # NOTE: This only updates display CONTENT (labels/arc), never display NAVIGATION
     # dm_current_view and dm_page_index are NEVER modified by timer ticks
     - if:
         condition:
-          lambda: 'return id(dm_current_view) == "module_timer:countdown";'
+          lambda: 'return id(timer_has_active) && id(dm_current_view) == "module_timer:countdown";'
         then:
           - lambda: |-
               ESP_LOGI("timer", "on_timer_tick: UPDATING DISPLAY CONTENT");
@@ -676,6 +692,10 @@ voice_assistant:
     - script.execute: timer_check_has_active
     - script.execute: timer_fetch_first_active
     - lambda: |-
+        if (!id(timer_has_active)) {
+          ESP_LOGW("timer", "on_timer_finished: no active timers");
+          return;
+        }
         ESP_LOGI("timer", "Timer finished: %s (%.0f active timers remaining)", id(timer_first_active).name.c_str(), (float)id(va).get_timers().size());
     - event.trigger:
         id: led_event
@@ -695,6 +715,10 @@ voice_assistant:
     - lvgl.page.show: expired_timer_page
     # Update expired timer display labels
     - lambda: |-
+        if (!id(timer_has_active)) {
+          ESP_LOGW("timer", "on_timer_finished display: no active timers");
+          return;
+        }
         auto total_sec = id(timer_first_active).total_seconds;
         
         // Update expired timer name
