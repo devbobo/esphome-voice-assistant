@@ -733,6 +733,7 @@ voice_assistant:
             return id(timer_has_active);
         then:
           - logger.log: "Timers still active, showing next"
+          - script.execute: timer_fetch_first_active
           - script.execute: timer_update_display
         else:
           - logger.log: "No timers active, showing empty state"
