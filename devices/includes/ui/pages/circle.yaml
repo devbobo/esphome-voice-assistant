@@ -27,8 +27,8 @@
         end_angle: 360
         rotation: 270
         arc_width: 1
-        arc_color: ${color_bright_orange}
-        bg_color: 0x1F2638
+        arc_color: ${color_light_gray}
+        bg_color: ${color_bright_orange}
         border_width: 0
     # Timer value (center text - MM:SS format)
     - label:

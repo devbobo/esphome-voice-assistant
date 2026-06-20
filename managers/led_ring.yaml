@@ -45,6 +45,9 @@ substitutions:
   color_red: "0xDE4A4A"
   color_white: "0xFFFFFF"
   color_black: "0x000000"
+  color_gray: "0x888888"
+  color_dark_gray: "0x444444"
+  color_light_gray: "0xCCCCCC"
 
   # State-specific colors (reference palette for easy customization)
   led_color_not_connected: ${color_brown}
