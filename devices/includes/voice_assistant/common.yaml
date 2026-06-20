@@ -402,6 +402,32 @@ voice_assistant:
         sound_key: "timer_started"
     - lambda: |-
         id(dm_current_view) = "module_timer:countdown";
+    # Show timer page and render initial state
+    - lvgl.page.show: timer_page
+    - lambda: |-
+        auto remaining_sec = id(timer_seconds_remaining);
+        auto total_sec = id(timer_first_active).total_seconds;
+        
+        // Update timer value label (MM:SS)
+        auto label_timer = (lv_obj_t *)id(ui_timer_value);
+        char buf[16];
+        uint16_t remaining_min = remaining_sec / 60;
+        uint16_t remaining_s = remaining_sec % 60;
+        snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
+        lv_label_set_text(label_timer, buf);
+        
+        // Update duration hint label
+        auto label_duration = (lv_obj_t *)id(ui_timer_duration);
+        char buf_duration[16];
+        snprintf(buf_duration, sizeof(buf_duration), "%u SEC.", total_sec);
+        lv_label_set_text(label_duration, buf_duration);
+        
+        // Update progress arc (0-360 degrees based on time remaining)
+        auto arc = (lv_obj_t *)id(ui_timer_arc);
+        uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
+        lv_arc_set_end_angle(arc, end_angle);
+        
+        ESP_LOGI("timer", "Display: Timer started - %u:%02u remaining / %u sec total", remaining_min, remaining_s, total_sec);
 
   on_timer_updated:
     - logger.log: "Timer updated"
@@ -435,24 +461,28 @@ voice_assistant:
               
               // Update timer value label (MM:SS)
               auto label_timer = (lv_obj_t *)id(ui_timer_value);
-              char buf[16];
-              uint16_t remaining_min = remaining_sec / 60;
-              uint16_t remaining_s = remaining_sec % 60;
-              snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
-              lv_label_set_text(label_timer, buf);
+              if (label_timer != nullptr) {
+                char buf[16];
+                uint16_t remaining_min = remaining_sec / 60;
+                uint16_t remaining_s = remaining_sec % 60;
+                snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
+                lv_label_set_text(label_timer, buf);
+              }
               
               // Update duration hint label
               auto label_duration = (lv_obj_t *)id(ui_timer_duration);
-              char buf_duration[16];
-              snprintf(buf_duration, sizeof(buf_duration), "%u SEC.", total_sec);
-              lv_label_set_text(label_duration, buf_duration);
+              if (label_duration != nullptr) {
+                char buf_duration[16];
+                snprintf(buf_duration, sizeof(buf_duration), "%u SEC.", total_sec);
+                lv_label_set_text(label_duration, buf_duration);
+              }
               
               // Update progress arc (0-360 degrees based on time remaining)
               auto arc = (lv_obj_t *)id(ui_timer_arc);
-              uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
-              lv_arc_set_end_angle(arc, end_angle);
-              
-              ESP_LOGI("timer", "Display: %u:%02u remaining / %u sec total (arc: %u°)", remaining_min, remaining_s, total_sec, end_angle);
+              if (arc != nullptr) {
+                uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
+                lv_arc_set_end_angle(arc, end_angle);
+              }
 
   on_timer_finished:
     - logger.log: "Timer finished"
