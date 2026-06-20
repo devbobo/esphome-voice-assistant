@@ -27,27 +27,28 @@
         end_angle: 360
         rotation: 270
         arc_width: 20
+        arc_color: 0x20A6FF
         bg_color: 0x1F2638
         border_width: 0
     # Timer value (center text - MM:SS format)
     - label:
         id: ui_timer_value
-        x: 110
-        y: 130
-        width: 100
-        height: 60
+        x: 80
+        y: 140
+        width: 200
+        height: 70
         text: "0:00"
-        text_font: montserrat_36
+        text_font: montserrat_48
         align: CENTER
         text_color: 0xFFFFFF
     # Timer duration hint (below timer)
     - label:
         id: ui_timer_duration
-        x: 110
-        y: 200
-        width: 100
-        height: 30
+        x: 80
+        y: 210
+        width: 200
+        height: 40
         text: "30 SEC."
-        text_font: montserrat_14
+        text_font: montserrat_16
         align: CENTER
         text_color: 0xFFA500
