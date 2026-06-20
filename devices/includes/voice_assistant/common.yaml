@@ -230,10 +230,11 @@ script:
             lv_label_set_text(label_duration, buf_duration);
           }
           
-          // Update timer name
+          // Update timer name (read directly from current timer, not from stale global)
           auto label_name = (lv_obj_t *)id(ui_timer_name);
           if (label_name != nullptr) {
-            lv_label_set_text(label_name, id(timer_active_name).empty() ? "Timer" : id(timer_active_name).c_str());
+            const std::string& timer_name = id(timer_first_active).name;
+            lv_label_set_text(label_name, timer_name.empty() ? "Timer" : timer_name.c_str());
           }
           
           // Update progress arc
