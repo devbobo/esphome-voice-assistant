@@ -11,13 +11,14 @@
 ##   - Consumers:    led_ring_manager, display_manager
 ##
 ## Canonical States:
-##   - not_connected: No Home Assistant API connection
-##   - idle:          Connected and ready, wake word armed
-##   - muted:         Microphone disabled
-##   - listening:     Wake word fired, voice assistant listening
-##   - thinking:      Speech detected, processing STT
-##   - replying:      TTS playback / announcement in progress
-##   - error:         Voice assistant error
+##   - not_connected:     No Home Assistant API connection
+##   - idle:              Connected and ready, wake word armed
+##   - muted:             Microphone disabled
+##   - wake_word_detected: Wake word detected (brief transient state)
+##   - listening:         Voice assistant actively listening for speech
+##   - thinking:          Speech detected, processing STT
+##   - replying:          TTS playback / announcement in progress
+##   - error:             Voice assistant error
 ##
 ## Note: Timer events (timer_started, timer_tick, timer_finished, timer_cancelled)
 ## are broadcast to system_event but do NOT change interaction state.
@@ -31,13 +32,14 @@
 ################################################################################
 
 substitutions:
-  istate_not_connected: "not_connected"
-  istate_idle:          "idle"
-  istate_muted:         "muted"
-  istate_listening:     "listening"
-  istate_thinking:      "thinking"
-  istate_replying:      "replying"
-  istate_error:         "error"
+  istate_not_connected:     "not_connected"
+  istate_idle:              "idle"
+  istate_muted:             "muted"
+  istate_wake_word_detected: "wake_word_detected"
+  istate_listening:         "listening"
+  istate_thinking:          "thinking"
+  istate_replying:          "replying"
+  istate_error:             "error"
   interaction_listening_timeout_ms: "20000"
 
 globals:
@@ -102,6 +104,9 @@ script:
           else if (event_type == "${evt_mic_unmuted}") {
             // Resolve ambiguity: unmuted while disconnected stays not_connected
             next = id(api_client_connected) ? "${istate_idle}" : "${istate_not_connected}";
+          }
+          else if (event_type == "${evt_va_wake_word_detected}") {
+            next = "${istate_wake_word_detected}";
           }
           else if (event_type == "${evt_va_listening}") {
             next = "${istate_listening}";
@@ -173,6 +178,7 @@ event:
       - ${istate_not_connected}
       - ${istate_idle}
       - ${istate_muted}
+      - ${istate_wake_word_detected}
       - ${istate_listening}
       - ${istate_thinking}
       - ${istate_replying}

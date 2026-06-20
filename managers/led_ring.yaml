@@ -12,9 +12,10 @@
 ## LED Ring States:
 ##   - not_connected: Device is not connected to Home Assistant
 ##   - idle: Device ready but not listening
-##   - listening: Wake feedback started or assistant is listening
+##   - wake_word_detected: Wake word detected (brief pulse/flash feedback)
+##   - listening: Voice assistant actively listening for speech
+##   - processing: Voice command recognized or TTS playing
 ##   - muted: Microphone disabled (solid red)
-##   - processing: Voice command recognized
 ##   - error: System error or communication issue
 ##
 ## Separation of Concerns:
@@ -26,6 +27,7 @@
 substitutions:
   # LED Event Types (published by this manager)
   led_event_not_connected: "not_connected"
+  led_event_wake_word_detected: "wake_word_detected"
   led_event_listening: "listening"
   led_event_muted: "muted"
   led_event_processing: "processing"
@@ -34,9 +36,10 @@ substitutions:
 
   # LED Ring State Colors (consumed by UI and device handlers)
   led_color_not_connected: "0x8B6A2A"
+  led_color_wake_word_detected: "0x20A6FF"
   led_color_idle: "0x343D52"
-  led_color_listening: "0x20A6FF"
-  led_color_processing: "0x47D27B"
+  led_color_listening: "0x47D27B"
+  led_color_processing: "0x00FF00"
   led_color_muted: "0xDE4A4A"
   led_color_error: "0xDE4A4A"
 
@@ -86,6 +89,13 @@ script:
                 event_type: "${led_event_muted}"
       - if:
           condition:
+            lambda: 'return interaction_state == "${istate_wake_word_detected}";'
+          then:
+            - event.trigger:
+                id: led_event
+                event_type: "${led_event_wake_word_detected}"
+      - if:
+          condition:
             lambda: 'return interaction_state == "${istate_listening}";'
           then:
             - event.trigger:
@@ -131,6 +141,7 @@ event:
     icon: "mdi:led-on"
     event_types:
       - ${led_event_not_connected}
+      - ${led_event_wake_word_detected}
       - ${led_event_listening}
       - ${led_event_muted}
       - ${led_event_processing}
