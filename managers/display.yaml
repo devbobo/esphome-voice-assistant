@@ -275,33 +275,37 @@ script:
             - lvgl.page.show: expired_timer_page
             - script.execute: timer_render_expired
 
-      # Timer cancelled: show next timer or idle page
+      # Timer cancelled: show next timer or idle page (only if user was browsing timers)
       - if:
           condition:
             lambda: 'return timer_event == "${evt_va_timer_cancelled}";'
           then:
             - logger.log: "Display: Timer cancelled"
-            - script.execute: timer_check_has_active
-            - script.wait: timer_check_has_active
             - if:
                 condition:
-                  lambda: 'return id(timer_has_active);'
+                  lambda: 'return id(dm_timers_in_list_view);'
                 then:
-                  # More timers active: select the next one
-                  - lambda: id(dm_timers_in_list_view) = true;
-                  - script.execute: timer_fetch_first_active
-                  - script.wait: timer_set_current_selection
-                  - lambda: id(dm_current_view) = "module_timer:countdown";
-                  - lvgl.page.show: timer_page
-                  - script.execute: timer_update_display
-                else:
-                  # No timers active: show no_timers page (sub-page of timer context)
-                  - lambda: |-
-                      id(timer_active_id) = "";
-                      id(timer_active_name) = "";
-                      id(timer_seconds_remaining) = 0;
-                  - lambda: id(dm_current_view) = "module_timer:no_timers";
-                  - lvgl.page.show: no_timers_page
+                  # User was actively browsing timers: update to next timer or no_timers page
+                  - script.execute: timer_check_has_active
+                  - script.wait: timer_check_has_active
+                  - if:
+                      condition:
+                        lambda: 'return id(timer_has_active);'
+                      then:
+                        # More timers active: select the next one
+                        - script.execute: timer_fetch_first_active
+                        - script.wait: timer_set_current_selection
+                        - lambda: id(dm_current_view) = "module_timer:countdown";
+                        - lvgl.page.show: timer_page
+                        - script.execute: timer_update_display
+                      else:
+                        # No timers active: show no_timers page (sub-page of timer context)
+                        - lambda: |-
+                            id(timer_active_id) = "";
+                            id(timer_active_name) = "";
+                            id(timer_seconds_remaining) = 0;
+                        - lambda: id(dm_current_view) = "module_timer:no_timers";
+                        - lvgl.page.show: no_timers_page
 
   - id: display_manager_render
     mode: restart
