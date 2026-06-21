@@ -226,6 +226,7 @@ script:
             lambda: 'return timer_event == "${evt_va_timer_started}";'
           then:
             - logger.log: "Display: Timer started"
+            - lambda: id(dm_timers_in_list_view) = true;
             - script.execute: timer_fetch_newest_active
             - script.wait: timer_set_current_selection
             - lambda: id(dm_current_view) = "module_timer:countdown";
@@ -275,6 +276,7 @@ script:
                   lambda: 'return id(timer_has_active);'
                 then:
                   # More timers active: select the next one
+                  - lambda: id(dm_timers_in_list_view) = true;
                   - script.execute: timer_fetch_first_active
                   - script.wait: timer_set_current_selection
                   - lambda: id(dm_current_view) = "module_timer:countdown";
