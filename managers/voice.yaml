@@ -128,6 +128,7 @@ script:
   ## Deactivates the wake word in both modes (device and HA).
   ################################################################################
   - id: stop_wake_word
+    mode: restart
     then:
       - logger.log: "Voice: Stopping wake word"
       - script.stop: start_wake_word
