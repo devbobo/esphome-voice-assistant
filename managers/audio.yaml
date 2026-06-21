@@ -124,7 +124,8 @@ script:
                 condition:
                   lambda: 'return std::string("${i2s_shared_bus}") == "true";'
                 then:
-                  # Shared I2S bus: stop mic, play, wait, restart listen
+                  # Shared I2S bus: stop mic, play, wait for completion
+                  # (Voice State Manager will restore listening based on canonical state)
                   - script.execute: microphone_stop_listening
                   - script.wait: microphone_stop_listening
                   - script.execute:
@@ -132,7 +133,7 @@ script:
                       priority: true
                       sound_file: !lambda return id(timer_started_sound);
                   - script.wait: play_sound
-                  # Note: Do NOT resume voice assistant here; Voice State Manager
+                  # Do NOT resume voice assistant here; Voice State Manager
                   # controls wake-word/assistant lifecycle based on canonical state.
                   # Unconditionally re-arming would break muted/idle state tracking.
                 else:

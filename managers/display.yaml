@@ -73,7 +73,8 @@ script:
           id(dm_show_startup) = false;
 
           // Preserve timer view when timer is active (refresh state first)
-          id(timer_check_has_active).execute();
+          // Note: Script execution is handled by display_manager_recompute_view caller
+          // which calls script.wait after execute
           if (id(timer_has_active) && id(dm_current_view).find("module_timer:") == 0) {
             ESP_LOGD("display", "Preserving timer view: %s", id(dm_current_view).c_str());
             return;
@@ -173,6 +174,7 @@ script:
           then:
             - logger.log: "Display: Timer started"
             - script.execute: timer_fetch_newest_active
+            - script.wait: timer_set_current_selection
             - lambda: id(dm_current_view) = "module_timer:countdown";
             - lvgl.page.show: timer_page
             - script.execute: timer_update_display
@@ -221,6 +223,7 @@ script:
                 then:
                   # More timers active: select the next one
                   - script.execute: timer_fetch_first_active
+                  - script.wait: timer_set_current_selection
                   - lambda: id(dm_current_view) = "module_timer:countdown";
                   - lvgl.page.show: timer_page
                   - script.execute: timer_update_display

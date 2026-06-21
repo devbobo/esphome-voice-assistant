@@ -297,6 +297,7 @@ script:
       - script.execute:
           id: timer_set_current_selection
           mode: "navigate_next"
+      - script.wait: timer_set_current_selection
       - script.execute: timer_update_display
 
   - id: timer_navigate_prev
@@ -305,20 +306,30 @@ script:
       - script.execute:
           id: timer_set_current_selection
           mode: "navigate_prev"
+      - script.wait: timer_set_current_selection
       - script.execute: timer_update_display
 
   - id: timer_get_current
     then:
       - lambda: |-
           // Validate if current selection is valid
-          id(timer_check_has_active).execute();
-          if (id(timer_has_active) && !id(timer_first_active).id.empty()) {
+          // Compute timer_has_active directly from voice assistant API (side-effect free)
+          const auto &timers = id(va).get_timers();
+          bool has_active = false;
+          for (const auto &timer : timers) {
+            if (timer.is_active) {
+              has_active = true;
+              break;
+            }
+          }
+          
+          if (has_active && !id(timer_first_active).id.empty()) {
             ESP_LOGD("timer", "[GET_CURRENT] VALID: id=%s, name=%s, remaining=%u sec",
                      id(timer_first_active).id.c_str(), id(timer_first_active).name.c_str(),
                      id(timer_first_active).seconds_left);
           } else {
             ESP_LOGW("timer", "[GET_CURRENT] INVALID: has_active=%d, id_empty=%d",
-                     id(timer_has_active), id(timer_first_active).id.empty());
+                     has_active, id(timer_first_active).id.empty());
           }
 
   - id: timer_render_display
@@ -379,6 +390,7 @@ script:
   - id: timer_update_display
     then:
       - script.execute: timer_get_current
+      - script.wait: timer_get_current
       - if:
           condition:
             - lambda: 'return id(timer_has_active) && !id(timer_first_active).id.empty();'
