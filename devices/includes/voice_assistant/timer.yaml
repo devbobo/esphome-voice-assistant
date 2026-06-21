@@ -171,7 +171,7 @@ script:
   ##
   ## Parameters:
   ##   - mode: "first_active" (first to expire)
-  ##           "newest_active" (max remaining time - longest running)
+  ##           "newest_active" (most recently created - last active in list)
   ##           "navigate_next" (cycle forward)
   ##           "navigate_prev" (cycle backward)
   ################################################################################
@@ -506,15 +506,25 @@ sensor:
     accuracy_decimals: 0
     update_interval: 1s
     lambda: |-
-      id(timer_check_has_active).execute();
-      if (id(timer_has_active)) {
-        // If no timer selected yet, select the first active one for consistency
-        if (id(timer_first_active).id.empty()) {
-          id(timer_fetch_first_active).execute();
+      // Compute remaining seconds directly from timers API to avoid stale cache
+      const auto &timers = id(va).get_timers();
+      if (timers.empty()) {
+        return 0.0f;
+      }
+      
+      // Prefer currently selected timer (if it exists in live list)
+      if (!id(timer_first_active).id.empty()) {
+        for (const auto &timer : timers) {
+          if (timer.id == id(timer_first_active).id && timer.is_active) {
+            return (float)timer.seconds_left;
+          }
         }
-        // Return remaining time from currently selected timer
-        if (!id(timer_first_active).id.empty()) {
-          return (float)id(timer_first_active).seconds_left;
+      }
+      
+      // Fall back to first active timer if selected one not found
+      for (const auto &timer : timers) {
+        if (timer.is_active) {
+          return (float)timer.seconds_left;
         }
       }
       return 0.0f;
