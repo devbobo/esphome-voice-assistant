@@ -41,7 +41,7 @@
         width: 200
         height: 40
         text: "Timer"
-        text_font: montserrat_24
+        text_font: nunito_24
         text_align: CENTER
         align: CENTER
         text_color: ${color_light_gray}
@@ -54,7 +54,7 @@
         # height: 70
         text: "0:00"
         text_align: CENTER
-        text_font: montserrat_60
+        text_font: nunito_50
         align: CENTER
         text_color: ${color_white}
     # Timer duration hint (below timer)
@@ -65,7 +65,7 @@
         width: 200
         height: 40
         text: "30 SEC."
-        text_font: montserrat_24
+        text_font: nunito_24
         text_align: CENTER
         align: CENTER
         text_color: ${color_orange}
@@ -98,7 +98,7 @@
         width: 200
         height: 40
         text: "Timer"
-        text_font: montserrat_24
+        text_font: nunito_24
         text_align: CENTER
         align: CENTER
         text_color: ${color_black}
@@ -110,7 +110,7 @@
         # height: 70
         text: "Done"
         text_align: CENTER
-        text_font: montserrat_60
+        text_font: nunito_50
         align: CENTER
         text_color: ${color_black}
     # Timer duration hint (below timer)
@@ -121,7 +121,7 @@
         width: 200
         height: 40
         text: "30 SEC."
-        text_font: montserrat_24
+        text_font: nunito_24
         text_align: CENTER
         align: CENTER
         text_color: ${color_black}
@@ -137,7 +137,7 @@
         width: 260
         height: 40
         text: "No timers active"
-        text_font: montserrat_24
+        text_font: nunito_24
         text_align: CENTER
         align: CENTER
         text_color: ${color_light_gray}

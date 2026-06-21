@@ -31,7 +31,7 @@ font:
       type: gfonts
       family: Nunito
       weight: 700
-    id: montserrat_60
+    id: nunito_50
     size: 50
     glyphsets:
       - GF_Latin_Core
@@ -39,7 +39,7 @@ font:
       type: gfonts
       family: Nunito
       weight: 700
-    id: montserrat_24
+    id: nunito_24
     size: 24
     glyphsets:
       - GF_Latin_Core
