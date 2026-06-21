@@ -202,12 +202,12 @@ script:
           condition:
             lambda: 'return touchscreen_event == "${touchscreen_swipe_down}";'
           then:
-            # Swipe down from timer list returns to timers menu
+            # Swipe down from any timer page in list view returns to timers menu
             - if:
                 condition:
-                  lambda: 'return id(dm_current_view) == "module_timer:countdown" && id(dm_timers_in_list_view);'
+                  lambda: 'return id(dm_current_view).find("module_timer:") != std::string::npos && id(dm_timers_in_list_view);'
                 then:
-                  - logger.log: "Swiping down from timers list to menu"
+                  - logger.log: "Swiping down from timers to menu"
                   - lambda: id(dm_timers_in_list_view) = false;
                   - lambda: id(dm_current_view) = "module_timer:menu";
                   - lvgl.page.show: timers_menu
