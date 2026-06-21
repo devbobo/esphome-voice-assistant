@@ -239,11 +239,11 @@ event:
       # LED Ring Manager - handle timer LED events
       - if:
           condition:
-            lambda: >-
+            lambda: |-
               return std::set<std::string>{
                 "${evt_va_timer_started}",
                 "${evt_va_timer_finished}",
-                "${evt_va_timer_cancelled}",
+                "${evt_va_timer_cancelled}"
               }.count(event_type) > 0;
           then:
             - script.execute:

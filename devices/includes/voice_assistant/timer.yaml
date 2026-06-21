@@ -188,7 +188,6 @@ script:
           }
           
           const std::string old_id = id(timer_first_active).id;
-          esphome::voice_assistant::Timer *selected_timer = nullptr;
           
           // Mode: first_active - timer with minimum remaining time (expires first)
           if (mode == "first_active") {
@@ -244,7 +243,6 @@ script:
             // Wrap to first if no next timer found
             esphome::voice_assistant::Timer result_timer = next_timer.id.empty() ? first_active : next_timer;
             if (!result_timer.id.empty()) {
-              selected_timer = &id(timer_first_active);
               id(timer_first_active) = result_timer;
             }
           }
@@ -278,7 +276,6 @@ script:
             }
             
             if (!last_active.id.empty()) {
-              selected_timer = &id(timer_first_active);
               id(timer_first_active) = last_active;
             }
           }
