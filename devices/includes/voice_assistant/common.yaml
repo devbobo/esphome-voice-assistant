@@ -75,9 +75,7 @@ voice_assistant:
 
   on_wake_word_detected:
     - logger.log: "Wake word detected (voice_assistant)"
-    - event.trigger:
-        id: system_event
-        event_type: ${evt_va_wake_word_detected}
+    # Event already triggered by micro_wake_word.on_wake_word_detected above
 
   on_stt_vad_start:
     - logger.log: "Voice activity detected"
