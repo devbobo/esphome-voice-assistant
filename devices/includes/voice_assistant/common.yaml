@@ -644,60 +644,28 @@ voice_assistant:
         event_type: ${evt_va_client_disconnected}
 
   on_timer_started:
-    - logger.log: "Timer started"
-    - lambda: |-
-        const auto &timer_list = id(va).get_timers();
-        int total = timer_list.size();
-        int active = 0;
-        for (const auto &t : timer_list) {
-          if (t.is_active) active++;
-        }
-        ESP_LOGI("timer", "[TIMER_STARTED] Total timers: %d, Active: %d", total, active);
-        for (const auto &t : timer_list) {
-          if (t.is_active) {
-            ESP_LOGI("timer", "  - Timer: id=%s, name=%s, total=%u sec, remaining=%u sec, active=%d", 
-                     t.id.c_str(), t.name.c_str(), t.total_seconds, t.seconds_left, t.is_active);
-          }
-        }
+    # Publish event for other modules (display, audio, LED) to respond to
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_started}"
-    - event.trigger:
-        id: led_event
-        event_type: "processing"
-    - script.execute:
-        id: audio_queue_sound
-        sound_key: "timer_started"
+    # Timer module: select newest active timer for display
     - script.execute: timer_fetch_newest_active
-    - lambda: |-
-        id(dm_current_view) = "module_timer:countdown";
-    - lvgl.page.show: timer_page
-    - script.execute: timer_update_display
 
   on_timer_updated:
-    - logger.log: "Timer updated"
+    # Publish event for other modules to respond to
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_updated}"
-    - script.execute: timer_fetch_first_active
+    # Timer module: update display with current timer state
     - script.execute: timer_update_display
 
   on_timer_tick:
-    - lambda: |-
-        const auto &timer_list = id(va).get_timers();
-        int active = 0;
-        for (const auto &t : timer_list) {
-          if (t.is_active) active++;
-        }
-        ESP_LOGD("timer", "[TIMER_TICK] view=%s, active_timers=%d, current_timer_id=%s", 
-                 id(dm_current_view).c_str(), active, id(timer_first_active).id.c_str());
-    - logger.log: "Timer tick"
+    # Publish event for other modules to respond to
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_tick}"
+    # Timer module: update display content if timer view is active
     - script.execute: timer_check_has_active
-    # NOTE: Only update display content if timer view is active
-    # Display navigation (dm_current_view, dm_page_index) is NEVER modified by timer ticks
     - if:
         condition:
           lambda: 'return id(dm_current_view) == "module_timer:countdown";'
@@ -705,58 +673,34 @@ voice_assistant:
           - script.execute: timer_update_current_tick
 
   on_timer_finished:
-    - logger.log: "Timer finished"
+    # Publish event for other modules (display, audio, LED) to respond to
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_finished}"
-    - event.trigger:
-        id: led_event
-        event_type: "timer_done"
-    # Conditionally stop listening if hardware shares I2S bus
-    - if:
-        condition:
-          lambda: |-
-            return std::string("${i2s_shared_bus}") == "true";
-        then:
-          - script.execute: microphone_stop_listening
-    # Start looping alarm using guard-checked script
-    - script.execute: timer_play_looping_alarm
-    - lambda: |-
-        id(dm_current_view) = "module_timer:expired";
-    # Show expired timer page
-    - lvgl.page.show: expired_timer_page
-    # Update display (validation happens inside script)
+    # Timer module: update display with finished state
     - script.execute: timer_update_display
 
   on_timer_cancelled:
-    - logger.log: "Timer cancelled"
+    # Timer module: stop alarm and update state
     - script.execute: timer_stop_looping_alarm
-    - event.trigger:
-        id: system_event
-        event_type: "${evt_va_timer_cancelled}"
     - script.execute: timer_check_has_active
     - if:
         condition:
-          lambda: |-
-            return id(timer_has_active);
+          lambda: 'return id(timer_has_active);'
         then:
-          - logger.log: "Timers still active, showing next"
+          # More timers active: select the next one
           - script.execute: timer_fetch_first_active
           - script.execute: timer_update_display
         else:
-          - logger.log: "No timers active, showing empty state"
+          # No timers active: clear selection
           - lambda: |-
               id(timer_active_id) = "";
               id(timer_active_name) = "";
               id(timer_seconds_remaining) = 0;
-              id(dm_current_view) = "module_timer:no_timers";
-          - lvgl.page.show: no_timers_page
-          - event.trigger:
-              id: led_event
-              event_type: "idle"
-          - script.execute: audio_stop_sound
-          - lambda: |-
-              id(dm_current_view) = "page_0_idle";
+    # Publish event for other modules (display, audio, LED) to respond to
+    - event.trigger:
+        id: system_event
+        event_type: "${evt_va_timer_cancelled}"
 
   on_error:
     - logger.log: "Voice assistant error"
