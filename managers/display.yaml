@@ -203,6 +203,9 @@ script:
             lambda: 'return touchscreen_event == "${touchscreen_swipe_down}";'
           then:
             # Swipe down from any timer page in list view returns to timers menu
+            - lambda: |-
+                ESP_LOGD("display", "Swipe down: view=%s, in_list=%d", 
+                  id(dm_current_view).c_str(), id(dm_timers_in_list_view));
             - if:
                 condition:
                   lambda: 'return id(dm_current_view).find("module_timer:") != std::string::npos && id(dm_timers_in_list_view);'
@@ -212,7 +215,6 @@ script:
                   - lambda: id(dm_current_view) = "module_timer:menu";
                   - lvgl.page.show: timers_menu
 
-      - script.execute: display_manager_recompute_view
       - script.execute: display_manager_render
 
   - id: display_manager_handle_timer_event
@@ -226,7 +228,9 @@ script:
             lambda: 'return timer_event == "${evt_va_timer_started}";'
           then:
             - logger.log: "Display: Timer started"
-            - lambda: id(dm_timers_in_list_view) = true;
+            - lambda: |-
+                id(dm_timers_in_list_view) = true;
+                ESP_LOGD("display", "Set dm_timers_in_list_view=true for swipe down");
             - script.execute: timer_fetch_newest_active
             - script.wait: timer_set_current_selection
             - lambda: id(dm_current_view) = "module_timer:countdown";
