@@ -116,9 +116,13 @@ Customize sound file locations in `config.yaml`:
 ```yaml
 substitutions:
   xiaozhi_sounds: "https://github.com/RealDeco/xiaozhi-esphome/raw/main/sounds"
+  ohf_sounds: "https://github.com/OHF-Voice/apps/raw/main/assist_satellite/sounds"
   sound_startup: "${xiaozhi_sounds}/Home_Connected.flac"
-  sound_wake_word: "${xiaozhi_sounds}/wake_word_triggered.flac"
-  sound_timer_finished: "${xiaozhi_sounds}/timer_finished.flac"
+  sound_wake_word: "${ohf_sounds}/wake_word_triggered.flac"
+  sound_timer_started: "${xiaozhi_sounds}/popup.flac"
+  sound_timer_alarm: "${ohf_sounds}/timer_finished.flac"
+  sound_mute_on: "${ohf_sounds}/mute_switch_on.flac"
+  sound_mute_off: "${ohf_sounds}/mute_switch_off.flac"
 ```
 
 ### Gesture Timing
