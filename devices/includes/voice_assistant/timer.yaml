@@ -493,95 +493,31 @@ button:
 
 voice_assistant:
   on_timer_started:
-    # Publish core event
+    # Publish core event - display/audio/LED managers subscribe and handle orchestration
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_started}"
-    # Timer module: select newest active timer for display
-    - script.execute: timer_fetch_newest_active
-    # Display orchestration
-    - lambda: |-
-        id(dm_current_view) = "module_timer:countdown";
-    - lvgl.page.show: timer_page
-    - script.execute: timer_update_display
-    # LED & audio orchestration
-    - event.trigger:
-        id: led_event
-        event_type: "processing"
-    - script.execute:
-        id: audio_queue_sound
-        sound_key: "timer_started"
 
   on_timer_updated:
-    # Publish event for other modules to respond to
+    # Publish event - display manager subscribes and updates display
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_updated}"
-    # Timer module: update display with current timer state
-    - script.execute: timer_update_display
 
   on_timer_tick:
-    # Publish event for other modules to respond to
+    # Publish event - display manager subscribes and updates tick if timer view active
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_tick}"
-    # Timer module: update display content if timer view is active
-    - script.execute: timer_check_has_active
-    - if:
-        condition:
-          lambda: 'return id(dm_current_view) == "module_timer:countdown";'
-        then:
-          - script.execute: timer_update_current_tick
 
   on_timer_finished:
-    # Publish event for other modules (display, audio, LED) to respond to
+    # Publish event - display/audio/LED managers subscribe and handle orchestration
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_finished}"
-    # Timer module: update display with finished state
-    - script.execute: timer_update_display
-    # Display orchestration
-    - lambda: |-
-        id(dm_current_view) = "module_timer:expired";
-    - lvgl.page.show: expired_timer_page
-    # LED & audio orchestration
-    - event.trigger:
-        id: led_event
-        event_type: "timer_done"
-    # Conditionally stop listening if hardware shares I2S bus
-    - if:
-        condition:
-          lambda: |-
-            return std::string("${i2s_shared_bus}") == "true";
-        then:
-          - script.execute: microphone_stop_listening
-    # Start looping alarm using guard-checked script
-    - script.execute: timer_play_looping_alarm
 
   on_timer_cancelled:
-    # Timer module: stop alarm and update state
-    - script.execute: timer_stop_looping_alarm
-    - script.execute: timer_check_has_active
-    - if:
-        condition:
-          lambda: 'return id(timer_has_active);'
-        then:
-          # More timers active: select the next one
-          - script.execute: timer_fetch_first_active
-          - script.execute: timer_update_display
-        else:
-          # No timers active: clear selection and show idle
-          - lambda: |-
-              id(timer_active_id) = "";
-              id(timer_active_name) = "";
-              id(timer_seconds_remaining) = 0;
-              id(dm_current_view) = "page_0_idle";
-          - lvgl.page.show: no_timers_page
-          - event.trigger:
-              id: led_event
-              event_type: "idle"
-          - script.execute: audio_stop_sound
-    # Publish event for other modules (display, audio, LED) to respond to
+    # Publish event - display/audio/LED managers subscribe and handle orchestration
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_cancelled}"

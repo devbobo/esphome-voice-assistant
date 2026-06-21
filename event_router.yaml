@@ -222,6 +222,49 @@ event:
                 id: voice_state_manager_handle_event
                 event_type: !lambda return event_type;
 
+      # Audio State Manager - handle timer audio events
+      - if:
+          condition:
+            lambda: >-
+              return std::set<std::string>{
+                "${evt_va_timer_started}",
+                "${evt_va_timer_finished}",
+                "${evt_va_timer_cancelled}",
+              }.count(event_type) > 0;
+          then:
+            - script.execute:
+                id: audio_state_manager_handle_event
+                event_type: !lambda return event_type;
+
+      # LED Ring Manager - handle timer LED events
+      - if:
+          condition:
+            lambda: >-
+              return std::set<std::string>{
+                "${evt_va_timer_finished}",
+                "${evt_va_timer_cancelled}",
+              }.count(event_type) > 0;
+          then:
+            - script.execute:
+                id: led_ring_handle_timer_event
+                timer_event: !lambda return event_type;
+
+      # Display Manager - handle all timer display events
+      - if:
+          condition:
+            lambda: >-
+              return std::set<std::string>{
+                "${evt_va_timer_started}",
+                "${evt_va_timer_updated}",
+                "${evt_va_timer_tick}",
+                "${evt_va_timer_finished}",
+                "${evt_va_timer_cancelled}",
+              }.count(event_type) > 0;
+          then:
+            - script.execute:
+                id: display_manager_handle_timer_event
+                timer_event: !lambda return event_type;
+
 packages:
   interaction_manager: !include managers/interaction.yaml
   audio_manager: !include managers/audio.yaml

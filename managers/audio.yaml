@@ -113,6 +113,34 @@ script:
           then:
             - lambda: id(api_connect_flow_completed) = false;
             - logger.log: "Audio: API disconnected - reset connect flow state"
+
+      # Timer started: queue timer_started sound
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_va_timer_started}";'
+          then:
+            - logger.log: "Audio: Timer started - queuing sound"
+            - script.execute:
+                id: play_sound
+                priority: false
+                sound_file: !lambda return id(timer_started_sound);
+
+      # Timer finished: play looping alarm
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_va_timer_finished}";'
+          then:
+            - logger.log: "Audio: Timer finished - starting alarm"
+            - script.execute: timer_play_looping_alarm
+
+      # Timer cancelled: stop any looping alarm
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_va_timer_cancelled}";'
+          then:
+            - logger.log: "Audio: Timer cancelled - stopping alarm"
+            - script.execute: timer_stop_looping_alarm
+
       - logger.log:
           format: "Audio Manager: Handled event %s"
           args: ["event_type.c_str()"]

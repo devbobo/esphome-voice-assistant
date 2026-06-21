@@ -145,6 +145,41 @@ script:
   - id: led_ring_apply_device_handler
     then: ${led_ring_state_handler}
 
+  ################################################################################
+  ## Timer Event Handler
+  ##
+  ## Translates timer events into LED states.
+  ################################################################################
+  - id: led_ring_handle_timer_event
+    mode: queued
+    parameters:
+      timer_event: string
+    then:
+      # Timer finished: show timer_done LED state
+      - if:
+          condition:
+            lambda: 'return timer_event == "${evt_va_timer_finished}";'
+          then:
+            - logger.log: "LED Ring: Timer finished - showing timer_done state"
+            - event.trigger:
+                id: led_event
+                event_type: "${led_event_timer_done}"
+
+      # Timer cancelled with no timers active: return to idle
+      - if:
+          condition:
+            lambda: 'return timer_event == "${evt_va_timer_cancelled}";'
+          then:
+            - script.execute: timer_check_has_active
+            - if:
+                condition:
+                  lambda: 'return !id(timer_has_active);'
+                then:
+                  - logger.log: "LED Ring: No more timers - returning to idle"
+                  - event.trigger:
+                      id: led_event
+                      event_type: "${led_event_idle}"
+
 
 ## LED Event Platform
 ##
