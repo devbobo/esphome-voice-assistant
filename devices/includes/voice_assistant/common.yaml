@@ -187,6 +187,16 @@ script:
           else:
             - voice_assistant.stop:
 
+  # Stop microphone capture on shared I2S hardware (guards against bus contention with audio playback)
+  - id: microphone_stop_capture_if_shared_bus
+    then:
+      - if:
+          condition:
+            lambda: 'return std::string("${i2s_shared_bus}") == "true";'
+          then:
+            - microphone.stop_capture:
+                id: va_microphone
+
 select:
   - platform: template
     entity_category: config
@@ -220,19 +230,21 @@ switch:
     optimistic: true
     restore_mode: RESTORE_DEFAULT_OFF
     on_turn_off:
+      # On shared I2S bus: stop microphone first to avoid contention with mute_on sound
+      - script.execute: microphone_stop_capture_if_shared_bus
+      - script.wait: microphone_stop_capture_if_shared_bus
       - script.execute:
           id: audio_queue_sound
           sound_key: "mute_on"
-      - microphone.stop_capture:
-          id: va_microphone
+      - script.wait: audio_queue_sound
       - voice_assistant.stop:
       - event.trigger:
           id: system_event
           event_type: ${evt_mic_muted}
     on_turn_on:
-      # Stop microphone first to avoid I2S bus contention, then play feedback
-      - microphone.stop_capture:
-          id: va_microphone
+      # On shared I2S bus: stop microphone first to avoid contention with mute_off sound
+      - script.execute: microphone_stop_capture_if_shared_bus
+      - script.wait: microphone_stop_capture_if_shared_bus
       - script.execute:
           id: play_sound
           priority: true

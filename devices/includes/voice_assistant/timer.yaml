@@ -203,24 +203,21 @@ script:
             }
             if (!output_timer.id.empty()) {
               id(timer_first_active) = output_timer;
-              selected_timer = &id(timer_first_active);
             }
           }
           
-          // Mode: newest_active - timer with maximum remaining time (longest running)
+          // Mode: newest_active - most recently created active timer (last active in list)
           else if (mode == "newest_active") {
             esphome::voice_assistant::Timer newest_timer{};
             newest_timer.id = "";
+            // Iterate through all timers; last active one is the newest
             for (const auto &timer : timers) {
               if (timer.is_active) {
-                if (newest_timer.id.empty() || timer.seconds_left >= newest_timer.seconds_left) {
-                  newest_timer = timer;
-                }
+                newest_timer = timer;  // Always use last active timer encountered
               }
             }
             if (!newest_timer.id.empty()) {
               id(timer_first_active) = newest_timer;
-              selected_timer = &id(timer_first_active);
             }
           }
           
@@ -464,8 +461,13 @@ script:
     then:
       - logger.log: "Timer alarm: Starting looping playback"
       - switch.turn_on: timer_ringing
-      # Wake word detection (micro_wake_word) is active on hardware with separate I2S buses
-      # (microphone was NOT stopped in on_timer_finished for those devices)
+      # On shared I2S hardware: stop wake word mic to avoid bus contention with alarm playback
+      - if:
+          condition:
+            lambda: 'return std::string("${i2s_shared_bus}") == "true";'
+          then:
+            - script.execute: microphone_stop_listening
+            - script.wait: microphone_stop_listening
       - while:
           condition:
             switch.is_on: timer_ringing

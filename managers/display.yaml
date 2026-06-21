@@ -118,7 +118,7 @@ script:
           then:
             - if:
                 condition:
-                  lambda: 'return id(dm_current_view).find("module_timer:") != std::string::npos && id(dm_current_view) != "module_timer:no_timers";'
+                  lambda: 'return id(dm_current_view).find("module_timer:") != std::string::npos;'
                 then:
                   - script.execute: timer_navigate_next
                 else:
@@ -131,7 +131,7 @@ script:
           then:
             - if:
                 condition:
-                  lambda: 'return id(dm_current_view).find("module_timer:") != std::string::npos && id(dm_current_view) != "module_timer:no_timers";'
+                  lambda: 'return id(dm_current_view).find("module_timer:") != std::string::npos;'
                 then:
                   - script.execute: timer_navigate_prev
                 else:
