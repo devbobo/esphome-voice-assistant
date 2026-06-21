@@ -171,7 +171,7 @@ script:
   ##
   ## Parameters:
   ##   - mode: "first_active" (first to expire)
-  ##           "newest_active" (most recent)
+  ##           "newest_active" (max remaining time - longest running)
   ##           "navigate_next" (cycle forward)
   ##           "navigate_prev" (cycle backward)
   ################################################################################
@@ -417,6 +417,31 @@ script:
     then:
       - logger.log: "Rendering timer expired"
       - lambda: |-
+          // Update expired timer page widgets with current timer info
+          auto label_name = (lv_obj_t *)id(ui_expired_timer_name);
+          auto label_duration = (lv_obj_t *)id(ui_expired_timer_duration);
+          auto arc = (lv_obj_t *)id(ui_expired_timer_arc);
+          
+          if (label_name != nullptr) {
+            auto timer_name = id(timer_active_name);
+            lv_label_set_text(label_name, timer_name.empty() ? "Timer" : timer_name.c_str());
+          }
+          
+          if (label_duration != nullptr && arc != nullptr) {
+            auto total_sec = id(timer_first_active).total_seconds;
+            char duration_str[16];
+            if (total_sec < 3600) {
+              snprintf(duration_str, sizeof(duration_str), "%u SEC.", total_sec);
+            } else {
+              auto minutes = total_sec / 60;
+              auto hours = minutes / 60;
+              snprintf(duration_str, sizeof(duration_str), "%u:%02u HR.", hours, minutes % 60);
+            }
+            lv_label_set_text(label_duration, duration_str);
+            // Show arc at 0 degrees (timer just expired)
+            lv_arc_set_end_angle(arc, 0);
+          }
+          
           ESP_LOGI("timer", "Display: Timer Expired");
 
   - id: timer_queue_alarm_if_active

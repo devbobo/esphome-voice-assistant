@@ -35,6 +35,7 @@ micro_wake_word:
             return std::string("${i2s_shared_bus}") == "true";
         then:
           - script.execute: microphone_stop_listening
+    # Publish wake word detected event (avoid duplicating micro_wake_word.on_wake_word_detected)
     - event.trigger:
         id: system_event
         event_type: "${evt_va_wake_word_detected}"
@@ -72,10 +73,7 @@ voice_assistant:
         event_type: ${evt_va_start}
 
   on_wake_word_detected:
-    - logger.log: "Wake word detected"
-    - event.trigger:
-        id: system_event
-        event_type: ${evt_va_wake_word_detected}
+    - logger.log: "Wake word detected (micro_wake_word)"
 
   on_stt_vad_start:
     - logger.log: "Voice activity detected"
