@@ -85,50 +85,17 @@ script:
           // Update the cached copy with fresh remaining time
           id(timer_first_active).seconds_left = fresh_seconds_left;
           ESP_LOGD("timer", "[TICK_UPDATE] SUCCESS: id=%s, name=%s, fresh_remaining=%u sec", current_id.c_str(), id(timer_first_active).name.c_str(), fresh_seconds_left);
-          
-          // Now update display with fresh remaining time
-          auto total_sec = id(timer_first_active).total_seconds;
-          auto remaining_sec = id(timer_first_active).seconds_left;
-          
-          // Update timer value label
-          auto label_timer = (lv_obj_t *)id(ui_timer_value);
-          if (label_timer != nullptr) {
-            char buf[16];
-            if (total_sec >= 3600) {
-              uint16_t remaining_h = remaining_sec / 3600;
-              uint16_t remaining_min = (remaining_sec % 3600) / 60;
-              uint16_t remaining_s = remaining_sec % 60;
-              snprintf(buf, sizeof(buf), "%u:%02u:%02u", remaining_h, remaining_min, remaining_s);
-            } else {
-              uint16_t remaining_min = remaining_sec / 60;
-              uint16_t remaining_s = remaining_sec % 60;
-              snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
-            }
-            lv_label_set_text(label_timer, buf);
-            ESP_LOGD("timer", "[TICK_UPDATE] Display updated: %s", buf);
-          }
-          
-          // Update progress arc showing remaining time (shrinks as time passes)
-          auto arc = (lv_obj_t *)id(ui_timer_arc);
-          if (arc != nullptr) {
-            uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
-            lv_arc_set_end_angle(arc, end_angle);
-            ESP_LOGD("timer", "[TICK_UPDATE] Arc updated: angle=%u deg, remaining=%u sec, total=%u sec", end_angle, remaining_sec, total_sec);
-          }
+      - script.execute: timer_format_time_display
 
   - id: timer_fetch_first_active
     then:
-      # Delegate to centralized state machine
-      - script.execute:
-          id: timer_set_current_selection
-          mode: "first_active"
+      - script.execute: timer_select_first_active
+      - script.wait: timer_select_first_active
 
   - id: timer_fetch_newest_active
     then:
-      # Delegate to centralized state machine
-      - script.execute:
-          id: timer_set_current_selection
-          mode: "newest_active"
+      - script.execute: timer_select_newest_active
+      - script.wait: timer_select_newest_active
 
   - id: timer_check_has_active
     then:
@@ -163,7 +130,198 @@ script:
           id(timer_has_any) = !timers.empty();
 
   ################################################################################
-  ## Timer Selection State Machine
+  ## Helper: Format Time Display
+  ## Centralizes the MM:SS or H:MM:SS formatting logic to avoid duplication
+  ################################################################################
+  - id: timer_format_time_display
+    then:
+      - lambda: |-
+          // Format timer_first_active remaining/total time and update UI
+          auto total_sec = id(timer_first_active).total_seconds;
+          auto remaining_sec = id(timer_first_active).seconds_left;
+          
+          // Format time string
+          char buf[16];
+          if (total_sec >= 3600) {
+            uint16_t remaining_h = remaining_sec / 3600;
+            uint16_t remaining_min = (remaining_sec % 3600) / 60;
+            uint16_t remaining_s = remaining_sec % 60;
+            snprintf(buf, sizeof(buf), "%u:%02u:%02u", remaining_h, remaining_min, remaining_s);
+          } else {
+            uint16_t remaining_min = remaining_sec / 60;
+            uint16_t remaining_s = remaining_sec % 60;
+            snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
+          }
+          
+          // Update timer label
+          auto label_timer = (lv_obj_t *)id(ui_timer_value);
+          if (label_timer != nullptr) {
+            lv_label_set_text(label_timer, buf);
+            ESP_LOGD("timer", "[FORMAT_TIME] Display updated: %s", buf);
+          }
+          
+          // Update progress arc
+          auto arc = (lv_obj_t *)id(ui_timer_arc);
+          if (arc != nullptr) {
+            uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
+            lv_arc_set_end_angle(arc, end_angle);
+            ESP_LOGD("timer", "[FORMAT_TIME] Arc updated: angle=%u deg", end_angle);
+          }
+
+  ################################################################################
+  ## Helper: Find First Active Timer (soonest to expire)
+  ################################################################################
+  - id: timer_select_first_active
+    then:
+      - lambda: |-
+          const auto &timers = id(va).get_timers();
+          if (timers.empty()) {
+            ESP_LOGW("timer", "[SELECT_FIRST_ACTIVE] No timers available");
+            return;
+          }
+          
+          esphome::voice_assistant::Timer output_timer{};
+          output_timer.id = "";
+          for (const auto &timer : timers) {
+            if (timer.is_active) {
+              if (output_timer.id.empty() || timer.seconds_left <= output_timer.seconds_left) {
+                output_timer = timer;
+              }
+            }
+          }
+          
+          if (!output_timer.id.empty()) {
+            id(timer_first_active) = output_timer;
+            id(timer_active_id) = output_timer.id;
+            id(timer_active_name) = output_timer.name;
+            id(timer_seconds_remaining) = output_timer.seconds_left;
+            ESP_LOGI("timer", "[SELECT_FIRST_ACTIVE] Selected: id=%s, name=%s, remaining=%u sec", 
+                     output_timer.id.c_str(), output_timer.name.c_str(), output_timer.seconds_left);
+          } else {
+            ESP_LOGW("timer", "[SELECT_FIRST_ACTIVE] No active timers found");
+          }
+
+  ################################################################################
+  ## Helper: Find Newest Active Timer (most recently created)
+  ################################################################################
+  - id: timer_select_newest_active
+    then:
+      - lambda: |-
+          const auto &timers = id(va).get_timers();
+          if (timers.empty()) {
+            ESP_LOGW("timer", "[SELECT_NEWEST_ACTIVE] No timers available");
+            return;
+          }
+          
+          esphome::voice_assistant::Timer newest_timer{};
+          newest_timer.id = "";
+          for (const auto &timer : timers) {
+            if (timer.is_active) {
+              newest_timer = timer;  // Always use last active timer encountered
+            }
+          }
+          
+          if (!newest_timer.id.empty()) {
+            id(timer_first_active) = newest_timer;
+            id(timer_active_id) = newest_timer.id;
+            id(timer_active_name) = newest_timer.name;
+            id(timer_seconds_remaining) = newest_timer.seconds_left;
+            ESP_LOGI("timer", "[SELECT_NEWEST_ACTIVE] Selected: id=%s, name=%s, remaining=%u sec", 
+                     newest_timer.id.c_str(), newest_timer.name.c_str(), newest_timer.seconds_left);
+          } else {
+            ESP_LOGW("timer", "[SELECT_NEWEST_ACTIVE] No active timers found");
+          }
+
+  ################################################################################
+  ## Helper: Navigate to Next Active Timer (cycle forward)
+  ################################################################################
+  - id: timer_select_next_active
+    then:
+      - lambda: |-
+          const auto &timers = id(va).get_timers();
+          if (timers.empty()) {
+            ESP_LOGW("timer", "[SELECT_NEXT] No timers available");
+            return;
+          }
+          
+          esphome::voice_assistant::Timer first_active{};
+          esphome::voice_assistant::Timer next_timer{};
+          first_active.id = "";
+          next_timer.id = "";
+          bool found_current = false;
+          
+          for (const auto &timer : timers) {
+            if (!timer.is_active) continue;
+            if (first_active.id.empty()) first_active = timer;
+            if (found_current && next_timer.id.empty()) {
+              next_timer = timer;
+              break;
+            }
+            if (timer.id == id(timer_first_active).id) {
+              found_current = true;
+            }
+          }
+          
+          // Wrap to first if no next timer found
+          esphome::voice_assistant::Timer result_timer = next_timer.id.empty() ? first_active : next_timer;
+          if (!result_timer.id.empty()) {
+            id(timer_first_active) = result_timer;
+            id(timer_active_id) = result_timer.id;
+            id(timer_active_name) = result_timer.name;
+            id(timer_seconds_remaining) = result_timer.seconds_left;
+            ESP_LOGI("timer", "[SELECT_NEXT] Selected: id=%s, name=%s, remaining=%u sec", 
+                     result_timer.id.c_str(), result_timer.name.c_str(), result_timer.seconds_left);
+          }
+
+  ################################################################################
+  ## Helper: Navigate to Previous Active Timer (cycle backward)
+  ################################################################################
+  - id: timer_select_prev_active
+    then:
+      - lambda: |-
+          const auto &timers = id(va).get_timers();
+          if (timers.empty()) {
+            ESP_LOGW("timer", "[SELECT_PREV] No timers available");
+            return;
+          }
+          
+          esphome::voice_assistant::Timer prev_timer{};
+          esphome::voice_assistant::Timer last_active{};
+          prev_timer.id = "";
+          last_active.id = "";
+          
+          for (const auto &timer : timers) {
+            if (!timer.is_active) continue;
+            if (timer.id == id(timer_first_active).id) {
+              if (!prev_timer.id.empty()) {
+                last_active = prev_timer;
+              }
+              break;
+            }
+            prev_timer = timer;
+            last_active = prev_timer;
+          }
+          
+          // Wrap: find actual last active if not set
+          if (last_active.id.empty()) {
+            for (const auto &timer : timers) {
+              if (timer.is_active) {
+                last_active = timer;
+              }
+            }
+          }
+          
+          if (!last_active.id.empty()) {
+            id(timer_first_active) = last_active;
+            id(timer_active_id) = last_active.id;
+            id(timer_active_name) = last_active.name;
+            id(timer_seconds_remaining) = last_active.seconds_left;
+            ESP_LOGI("timer", "[SELECT_PREV] Selected: id=%s, name=%s, remaining=%u sec", 
+                     last_active.id.c_str(), last_active.name.c_str(), last_active.seconds_left);
+          }
+
+  ################################################################################
+  ## Timer Selection State Machine (Deprecated - kept for backward compatibility)
   ##
   ## Single source of truth for timer_first_active updates.
   ## All navigation (next, prev, fetch_first, fetch_newest) call this script
@@ -293,20 +451,14 @@ script:
 
   - id: timer_navigate_next
     then:
-      # Delegate to centralized state machine
-      - script.execute:
-          id: timer_set_current_selection
-          mode: "navigate_next"
-      - script.wait: timer_set_current_selection
+      - script.execute: timer_select_next_active
+      - script.wait: timer_select_next_active
       - script.execute: timer_update_display
 
   - id: timer_navigate_prev
     then:
-      # Delegate to centralized state machine
-      - script.execute:
-          id: timer_set_current_selection
-          mode: "navigate_prev"
-      - script.wait: timer_set_current_selection
+      - script.execute: timer_select_prev_active
+      - script.wait: timer_select_prev_active
       - script.execute: timer_update_display
 
   - id: timer_get_current
