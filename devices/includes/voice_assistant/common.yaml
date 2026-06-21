@@ -75,6 +75,9 @@ voice_assistant:
 
   on_wake_word_detected:
     - logger.log: "Wake word detected (micro_wake_word)"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_wake_word_detected}
 
   on_stt_vad_start:
     - logger.log: "Voice activity detected"
@@ -197,6 +200,7 @@ script:
           then:
             - microphone.stop_capture:
                 id: va_microphone
+            - delay: 100ms  # Allow capture to stop cleanly before playing audio
 
 select:
   - platform: template

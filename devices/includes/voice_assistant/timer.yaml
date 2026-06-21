@@ -323,6 +323,9 @@ script:
             }
           }
           
+          // Update the global for downstream consumers
+          id(timer_has_active) = has_active;
+          
           if (has_active && !id(timer_first_active).id.empty()) {
             ESP_LOGD("timer", "[GET_CURRENT] VALID: id=%s, name=%s, remaining=%u sec",
                      id(timer_first_active).id.c_str(), id(timer_first_active).name.c_str(),

@@ -72,10 +72,9 @@ script:
 
           id(dm_show_startup) = false;
 
-          // Preserve timer view when timer is active (refresh state first)
-          // Note: Script execution is handled by display_manager_recompute_view caller
-          // which calls script.wait after execute
-          if (id(timer_has_active) && id(dm_current_view).find("module_timer:") == 0) {
+          // Preserve timer view when timer is active or ringing
+          // Prevents UI from bouncing away during active timer or alarm
+          if ((id(timer_has_active) || id(timer_ringing)) && id(dm_current_view).find("module_timer:") == 0) {
             ESP_LOGD("display", "Preserving timer view: %s", id(dm_current_view).c_str());
             return;
           }
