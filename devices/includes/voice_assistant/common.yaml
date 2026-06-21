@@ -702,6 +702,75 @@ voice_assistant:
         id: system_event
         event_type: "${evt_va_timer_cancelled}"
 
+  ################################################################################
+  ## Phase 2: Event Subscribers (Display, LED, Audio Orchestration)
+  ################################################################################
+  
+  # Display subscriber: Handle timer started
+  - event_type: "${evt_va_timer_started}"
+    then:
+      - logger.log: "Display: Timer started - showing timer page"
+      - lambda: |-
+          id(dm_current_view) = "module_timer:countdown";
+      - lvgl.page.show: timer_page
+      - script.execute: timer_update_display
+      # Audio & LED responses
+      - event.trigger:
+          id: led_event
+          event_type: "processing"
+      - script.execute:
+          id: audio_queue_sound
+          sound_key: "timer_started"
+
+  # Display subscriber: Handle timer updated
+  - event_type: "${evt_va_timer_updated}"
+    then:
+      - logger.log: "Display: Timer updated"
+      # Display is already updated in on_timer_updated handler
+
+  # Display subscriber: Handle timer finished
+  - event_type: "${evt_va_timer_finished}"
+    then:
+      - logger.log: "Display: Timer finished - showing expired page"
+      - lambda: |-
+          id(dm_current_view) = "module_timer:expired";
+      - lvgl.page.show: expired_timer_page
+      # Audio & LED responses
+      - event.trigger:
+          id: led_event
+          event_type: "timer_done"
+      # Conditionally stop listening if hardware shares I2S bus
+      - if:
+          condition:
+            lambda: |-
+              return std::string("${i2s_shared_bus}") == "true";
+          then:
+            - script.execute: microphone_stop_listening
+      # Start looping alarm using guard-checked script
+      - script.execute: timer_play_looping_alarm
+
+  # Display subscriber: Handle timer cancelled
+  - event_type: "${evt_va_timer_cancelled}"
+    then:
+      - logger.log: "Display: Timer cancelled"
+      - script.execute: timer_check_has_active
+      - if:
+          condition:
+            lambda: 'return id(timer_has_active);'
+          then:
+            - logger.log: "Display: Timers still active, keeping timer view"
+            # Timer state already updated in on_timer_cancelled, display already updated
+          else:
+            - logger.log: "Display: No timers active, showing idle page"
+            - lambda: |-
+                id(dm_current_view) = "page_0_idle";
+            - lvgl.page.show: no_timers_page
+            # Audio & LED responses
+            - event.trigger:
+                id: led_event
+                event_type: "idle"
+            - script.execute: audio_stop_sound
+
   on_error:
     - logger.log: "Voice assistant error"
     - event.trigger:
