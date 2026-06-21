@@ -313,29 +313,29 @@ script:
           mode: "navigate_prev"
       - script.execute: timer_update_display
 
-  - id: timer_update_display
+  - id: timer_get_current
     then:
       - lambda: |-
-          // Safety-first approach: validate everything before accessing any timer fields
+          // Validate if current selection is valid
           id(timer_check_has_active).execute();
-          if (!id(timer_has_active)) {
-            ESP_LOGW("timer", "[UPDATE_DISPLAY] FAILED: no active timers");
-            return;
+          if (id(timer_has_active) && !id(timer_first_active).id.empty()) {
+            ESP_LOGD("timer", "[GET_CURRENT] VALID: id=%s, name=%s, remaining=%u sec",
+                     id(timer_first_active).id.c_str(), id(timer_first_active).name.c_str(),
+                     id(timer_first_active).seconds_left);
+          } else {
+            ESP_LOGW("timer", "[GET_CURRENT] INVALID: has_active=%d, id_empty=%d",
+                     id(timer_has_active), id(timer_first_active).id.empty());
           }
-          
-          // Don't refetch - use the currently selected timer (set by navigation or event handlers)
-          if (id(timer_first_active).id.empty()) {
-            ESP_LOGW("timer", "[UPDATE_DISPLAY] FAILED: timer_first_active.id is empty");
-            return;
-          }
-          
-          // NOW safe to access timer fields
+
+  - id: timer_render_display
+    then:
+      - lambda: |-
           auto total_sec = id(timer_first_active).total_seconds;
           auto remaining_sec = id(timer_first_active).seconds_left;
-          ESP_LOGI("timer", "[UPDATE_DISPLAY] Rendering: id=%s, name=%s, total=%u sec, remaining=%u sec, view=%s", 
-                   id(timer_first_active).id.c_str(), id(timer_first_active).name.c_str(), total_sec, remaining_sec, id(dm_current_view).c_str());
+          ESP_LOGD("timer", "[RENDER_DISPLAY] id=%s, total=%u sec, remaining=%u sec",
+                   id(timer_first_active).id.c_str(), total_sec, remaining_sec);
           
-          // Update timer value label
+          // Update timer countdown (MM:SS or H:MM:SS format)
           auto label_timer = (lv_obj_t *)id(ui_timer_value);
           if (label_timer != nullptr) {
             char buf[16];
@@ -352,7 +352,7 @@ script:
             lv_label_set_text(label_timer, buf);
           }
           
-          // Update duration label
+          // Update total duration label (1 HR., 30 MINS., 45 SEC. etc)
           auto label_duration = (lv_obj_t *)id(ui_timer_duration);
           if (label_duration != nullptr) {
             char buf_duration[16];
@@ -368,19 +368,32 @@ script:
             lv_label_set_text(label_duration, buf_duration);
           }
           
-          // Update timer name (read directly from current timer, not from stale global)
+          // Update timer name
           auto label_name = (lv_obj_t *)id(ui_timer_name);
           if (label_name != nullptr) {
             const std::string& timer_name = id(timer_first_active).name;
             lv_label_set_text(label_name, timer_name.empty() ? "Timer" : timer_name.c_str());
           }
           
-          // Update progress arc
+          // Update progress arc (0-360 degrees)
           auto arc = (lv_obj_t *)id(ui_timer_arc);
           if (arc != nullptr) {
             uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
             lv_arc_set_end_angle(arc, end_angle);
           }
+
+  - id: timer_update_display
+    then:
+      - script.execute: timer_get_current
+      - if:
+          condition:
+            - lambda: 'return id(timer_has_active) && !id(timer_first_active).id.empty();'
+          then:
+            - script.execute: timer_render_display
+          else:
+            - logger.log:
+                level: WARN
+                format: "[UPDATE_DISPLAY] Cannot render: no valid timer"
 
   ################################################################################
   ## Timer Display Rendering
