@@ -21,62 +21,6 @@ packages:
 ## Wake word detection and voice command processing
 ################################################################################
 
-sensor:
-  - platform: template
-    id: timer_remaining_seconds
-    name: "Timer Remaining"
-    unit_of_measurement: "s"
-    accuracy_decimals: 0
-    update_interval: 1s
-    lambda: |-
-      id(timer_check_has_active).execute();
-      if (id(timer_has_active)) {
-        // Read from currently selected timer (set by navigation/events), DON'T refetch
-        if (id(timer_first_active).id.empty()) {
-          return 0.0f;
-        }
-        return (float)id(timer_first_active).seconds_left;
-      }
-      return 0.0f;
-
-  - platform: template
-    id: timer_count_all
-    name: "Total Timers"
-    unit_of_measurement: "timers"
-    accuracy_decimals: 0
-    update_interval: 1s
-    lambda: |-
-      return (float)id(va).get_timers().size();
-
-  - platform: template
-    id: timer_count_active
-    name: "Active Timers"
-    unit_of_measurement: "timers"
-    accuracy_decimals: 0
-    update_interval: 1s
-    lambda: |-
-      int count = 0;
-      for (const auto &timer : id(va).get_timers()) {
-        if (timer.is_active) count++;
-      }
-      return (float)count;
-
-text_sensor:
-  - platform: template
-    id: timer_name
-    name: "Timer Name"
-    lambda: |-
-      return id(timer_active_name);
-
-button:
-  - platform: template
-    id: timer_button_cancel
-    name: "Cancel Timer"
-    on_press:
-      - logger.log: "Cancel timer button pressed"
-      - script.execute: timer_stop_looping_alarm
-      - voice_assistant.stop:
-
 micro_wake_word:
   id: mww
   models:
