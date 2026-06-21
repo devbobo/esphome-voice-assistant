@@ -12,3 +12,181 @@
         border_color: 0xE8B033
         bg_color: 0x1F2638
         hidden: true
+
+- id: timer_page
+  bg_color: ${color_black}
+  widgets:
+    # Circular progress arc (timer ring)
+    - arc:
+        id: ui_timer_arc
+        x: ${timer_arc_x}
+        y: ${timer_arc_y}
+        width: ${timer_arc_size}
+        height: ${timer_arc_size}
+        start_angle: 0
+        end_angle: 360
+        rotation: 270
+        arc_width: 5
+        arc_color: ${color_dark_gray}
+        indicator:
+          arc_color: ${color_orange}
+          arc_width: 5
+        # bg_color: ${color_bright_orange}
+        border_width: 0
+    # Timer name (above timer value)
+    - label:
+        id: ui_timer_name
+        x: ${timer_value_x}
+        y: ${timer_name_y}
+        width: 200
+        height: 40
+        text: "Timer"
+        text_font: nunito_24
+        text_align: CENTER
+        align: CENTER
+        text_color: ${color_light_gray}
+    # Timer value (center text - MM:SS or H:MM:SS format)
+    - label:
+        id: ui_timer_value
+        x: ${timer_value_x}
+        y: ${timer_value_y}
+        width: 200
+        # height: 70
+        text: "0:00"
+        text_align: CENTER
+        text_font: nunito_50
+        align: CENTER
+        text_color: ${color_white}
+    # Timer duration hint (below timer)
+    - label:
+        id: ui_timer_duration
+        x: ${timer_value_x}
+        y: ${timer_duration_y}
+        width: 200
+        height: 40
+        text: "30 SEC."
+        text_font: nunito_24
+        text_align: CENTER
+        align: CENTER
+        text_color: ${color_orange}
+
+- id: expired_timer_page
+  bg_color: ${color_orange}
+  widgets:
+    # Circular progress arc (timer ring)
+    - arc:
+        id: ui_expired_timer_arc
+        x: ${timer_arc_x}
+        y: ${timer_arc_y}
+        width: ${timer_arc_size}
+        height: ${timer_arc_size}
+        start_angle: 0
+        end_angle: 360
+        rotation: 270
+        arc_width: 5
+        arc_color: ${color_dark_gray}
+        indicator:
+          arc_color: ${color_dark_gray}
+          arc_width: 5
+        # bg_color: ${color_bright_orange}
+        border_width: 0
+    # Timer name (above timer value)
+    - label:
+        id: ui_expired_timer_name
+        x: ${timer_value_x}
+        y: ${timer_name_y}
+        width: 200
+        height: 40
+        text: "Timer"
+        text_font: nunito_24
+        text_align: CENTER
+        align: CENTER
+        text_color: ${color_black}
+    # Timer value (center text - MM:SS or H:MM:SS format)
+    - label:
+        x: ${timer_value_x}
+        y: ${timer_value_y}
+        width: 200
+        # height: 70
+        text: "Done"
+        text_align: CENTER
+        text_font: nunito_50
+        align: CENTER
+        text_color: ${color_black}
+    # Timer duration hint (below timer)
+    - label:
+        id: ui_expired_timer_duration
+        x: ${timer_value_x}
+        y: ${timer_duration_y}
+        width: 200
+        height: 40
+        text: "30 SEC."
+        text_font: nunito_24
+        text_align: CENTER
+        align: CENTER
+        text_color: ${color_black}
+
+- id: no_timers_page
+  bg_color: ${color_black}
+  widgets:
+    # No active timers message
+    - label:
+        id: ui_no_timers_label
+        x: 0
+        y: 0
+        width: 260
+        height: 40
+        text: "No timers active"
+        text_font: nunito_24
+        text_align: CENTER
+        align: CENTER
+        text_color: ${color_light_gray}
+
+- id: timers_menu
+  bg_color: ${color_black}
+  widgets:
+    # Timer logo/icon (placeholder square)
+    - obj:
+        id: ui_timers_logo
+        x: 90
+        y: 60
+        width: 80
+        height: 80
+        radius: 8
+        bg_color: ${color_orange}
+        border_width: 0
+    # "Timers" title
+    - label:
+        id: ui_timers_title
+        x: 0
+        y: 150
+        width: 260
+        height: 50
+        text: "Timers"
+        text_font: nunito_24
+        text_align: CENTER
+        align: CENTER
+        text_color: ${color_white}
+    # Tap instruction
+    - label:
+        id: ui_timers_tap
+        x: 0
+        y: 220
+        width: 260
+        height: 30
+        text: "Tap to view timers"
+        text_font: nunito_24
+        text_align: CENTER
+        align: CENTER
+        text_color: ${color_light_gray}
+    # Tap target (invisible, full screen)
+    - obj:
+        id: ui_timers_tap_target
+        x: 0
+        y: 0
+        width: 260
+        height: 260
+        radius: 0
+        bg_color: 0x000000
+        bg_opa: 0%
+        border_width: 0

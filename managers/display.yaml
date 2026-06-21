@@ -56,6 +56,12 @@ globals:
     restore_value: no
     initial_value: '""'
 
+  # Navigation state for timers menu
+  - id: dm_timers_in_list_view
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
 script:
   - id: display_manager_recompute_view
     mode: restart
@@ -72,12 +78,24 @@ script:
 
           id(dm_show_startup) = false;
 
+          // Preserve timer view when timer is active or ringing
+          // Prevents UI from bouncing away during active timer or alarm
+          if ((id(timer_has_active) || id(timer_ringing).state) && id(dm_current_view).find("module_timer:") == 0) {
+            ESP_LOGD("display", "Preserving timer view: %s", id(dm_current_view).c_str());
+            return;
+          }
+
           if (id(dm_detail_mode)) {
             id(dm_current_view) = "detail_" + id(dm_assistant_state);
             return;
           }
 
-          id(dm_current_view) = "page_" + to_string(id(dm_page_index)) + "_" + id(dm_assistant_state);
+          // 2-page carousel: page_0 (main), timer_menu
+          if (id(dm_page_index) == 1) {
+            id(dm_current_view) = "module_timer:menu";
+          } else {
+            id(dm_current_view) = "page_0_" + id(dm_assistant_state);
+          }
 
   ################################################################################
   ## Display Manager - Interaction State Handler
@@ -109,21 +127,89 @@ script:
           condition:
             lambda: 'return touchscreen_event == "${touchscreen_swipe_left}";'
           then:
-            - lambda: |-
-                id(dm_detail_mode) = false;
-                id(dm_page_index) = (id(dm_page_index) + 2) % 3;
+            - if:
+                condition:
+                  lambda: 'return id(dm_current_view).find("module_timer:") != std::string::npos && id(dm_timers_in_list_view);'
+                then:
+                  - script.execute: timer_navigate_next
+                else:
+                  - lambda: |-
+                      id(dm_detail_mode) = false;
+                      id(dm_page_index) = (id(dm_page_index) + 1) % 2;
+                      id(dm_current_view) = (id(dm_page_index) == 1)
+                        ? "module_timer:menu"
+                        : ("page_0_" + id(dm_assistant_state));
+                      if (id(dm_page_index) == 1) {
+                        id(dm_timers_in_list_view) = false;
+                      }
+                  - if:
+                      condition:
+                        lambda: 'return id(dm_page_index) == 1;'
+                      then:
+                        - lvgl.page.show: timers_menu
+                      else:
+                        - lvgl.page.show: main_page
       - if:
           condition:
             lambda: 'return touchscreen_event == "${touchscreen_swipe_right}";'
           then:
-            - lambda: |-
-                id(dm_detail_mode) = false;
-                id(dm_page_index) = (id(dm_page_index) + 1) % 3;
+            - if:
+                condition:
+                  lambda: 'return id(dm_current_view).find("module_timer:") != std::string::npos && id(dm_timers_in_list_view);'
+                then:
+                  - script.execute: timer_navigate_prev
+                else:
+                  - lambda: |-
+                      id(dm_detail_mode) = false;
+                      id(dm_page_index) = (id(dm_page_index) + 1) % 2;
+                      id(dm_current_view) = (id(dm_page_index) == 1)
+                        ? "module_timer:menu"
+                        : ("page_0_" + id(dm_assistant_state));
+                      if (id(dm_page_index) == 1) {
+                        id(dm_timers_in_list_view) = false;
+                      }
+                  - if:
+                      condition:
+                        lambda: 'return id(dm_page_index) == 1;'
+                      then:
+                        - lvgl.page.show: timers_menu
+                      else:
+                        - lvgl.page.show: main_page
       - if:
           condition:
             lambda: 'return touchscreen_event == "${touchscreen_single_press}";'
           then:
-            - lambda: id(dm_detail_mode) = !id(dm_detail_mode);
+            - if:
+                condition:
+                  lambda: 'return id(dm_current_view) == "module_timer:menu" && !id(dm_timers_in_list_view);'
+                then:
+                  # Tap on timers menu: enter timer browsing context
+                  - logger.log: "Tap on timers menu"
+                  - lambda: id(dm_timers_in_list_view) = true;
+                  - script.execute: timer_check_has_any
+                  - script.wait: timer_check_has_any
+                  - if:
+                      condition:
+                        lambda: 'return id(timer_has_any);'
+                      then:
+                        # Timers exist: show first active timer
+                        - script.execute: timer_fetch_first_active
+                        - script.wait: timer_fetch_first_active
+                        - lambda: id(dm_current_view) = "module_timer:countdown";
+                        - lvgl.page.show: timer_page
+                        - script.execute: timer_update_display
+                      else:
+                        # No timers: show no_timers page
+                        - lambda: id(dm_current_view) = "module_timer:no_timers";
+                        - lvgl.page.show: no_timers_page
+                else:
+                  - if:
+                      condition:
+                        lambda: 'return id(dm_current_view).find("module_timer:") != std::string::npos;'
+                      then:
+                        - logger.log: "Touch on timer display - detail mode blocked"
+                      else:
+                        - lambda: id(dm_detail_mode) = !id(dm_detail_mode);
       - if:
           condition:
             lambda: 'return touchscreen_event == "${touchscreen_double_press}";'
@@ -132,8 +218,101 @@ script:
                 id(dm_detail_mode) = false;
                 id(dm_page_index) = 0;
 
-      - script.execute: display_manager_recompute_view
+      - if:
+          condition:
+            lambda: 'return touchscreen_event == "${touchscreen_swipe_down}";'
+          then:
+            # Swipe down from any timer page in list view returns to timers menu
+            - if:
+                condition:
+                  lambda: 'return id(dm_current_view).find("module_timer:") != std::string::npos && id(dm_timers_in_list_view);'
+                then:
+                  - logger.log: "Swiping down from timers to menu"
+                  - lambda: id(dm_timers_in_list_view) = false;
+                  - lambda: id(dm_current_view) = "module_timer:menu";
+                  - lvgl.page.show: timers_menu
+
       - script.execute: display_manager_render
+
+  - id: display_manager_handle_timer_event
+    mode: queued
+    parameters:
+      timer_event: string
+    then:
+      # Timer started: fetch newest timer and show countdown page
+      - if:
+          condition:
+            lambda: 'return timer_event == "${evt_va_timer_started}";'
+          then:
+            - logger.log: "Display: Timer started"
+            - lambda: id(dm_timers_in_list_view) = true;
+            - script.execute: timer_fetch_newest_active
+            - script.wait: timer_fetch_newest_active
+            - lambda: id(dm_current_view) = "module_timer:countdown";
+            - lvgl.page.show: timer_page
+            - script.execute: timer_update_display
+
+      # Timer updated: refresh display
+      - if:
+          condition:
+            lambda: 'return timer_event == "${evt_va_timer_updated}";'
+          then:
+            - logger.log: "Display: Timer updated"
+            - script.execute: timer_update_display
+
+      # Timer tick: update countdown if timer view active
+      - if:
+          condition:
+            lambda: 'return timer_event == "${evt_va_timer_tick}";'
+          then:
+            - if:
+                condition:
+                  lambda: 'return id(dm_current_view) == "module_timer:countdown";'
+                then:
+                  - script.execute: timer_update_current_tick
+
+      # Timer finished: show expired page
+      - if:
+          condition:
+            lambda: 'return timer_event == "${evt_va_timer_finished}";'
+          then:
+            - logger.log: "Display: Timer finished"
+            - script.execute: timer_update_display
+            - lambda: id(dm_current_view) = "module_timer:expired";
+            - lvgl.page.show: expired_timer_page
+            - script.execute: timer_render_expired
+
+      # Timer cancelled: show next timer or idle page (only if user was browsing timers)
+      - if:
+          condition:
+            lambda: 'return timer_event == "${evt_va_timer_cancelled}";'
+          then:
+            - logger.log: "Display: Timer cancelled"
+            - if:
+                condition:
+                  lambda: 'return id(dm_timers_in_list_view);'
+                then:
+                  # User was actively browsing timers: update to next timer or no_timers page
+                  - script.execute: timer_check_has_active
+                  - script.wait: timer_check_has_active
+                  - if:
+                      condition:
+                        lambda: 'return id(timer_has_active);'
+                      then:
+                        # More timers active: select the next one
+                        - script.execute: timer_fetch_first_active
+                        - script.wait: timer_fetch_first_active
+                        - lambda: id(dm_current_view) = "module_timer:countdown";
+                        - lvgl.page.show: timer_page
+                        - script.execute: timer_update_display
+                      else:
+                        # No timers active: show no_timers page (sub-page of timer context)
+                        - lambda: |-
+                            id(timer_active_id) = "";
+                            id(timer_active_name) = "";
+                            id(timer_seconds_remaining) = 0;
+                        - lambda: id(dm_current_view) = "module_timer:no_timers";
+                        - lvgl.page.show: no_timers_page
 
   - id: display_manager_render
     mode: restart
@@ -148,6 +327,21 @@ script:
             - 'id(dm_detail_mode) ? "on" : "off"'
             - "id(dm_last_system_event).c_str()"
             - "id(dm_last_touch_event).c_str()"
+
+      ########################################################################
+      ## Module Display Page Routing
+      ##
+      ## Modules declare display_pages in manifest.yaml with page IDs like
+      ## "module_timer:countdown". When dm_current_view matches, this router
+      ## extracts the module name and page, then calls module_render_page.
+      ##
+      ## Pattern:
+      ##   dm_current_view = "module_timer:countdown"
+      ##   → Extract module "timer", page "countdown"
+      ##   → Call timer_render_countdown()
+      ########################################################################
+      # Timer events are routed via display_manager_handle_timer_event script
+      # which responds to all timer events and updates display accordingly
 
 interval:
   - interval: 250ms

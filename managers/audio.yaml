@@ -113,11 +113,58 @@ script:
           then:
             - lambda: id(api_connect_flow_completed) = false;
             - logger.log: "Audio: API disconnected - reset connect flow state"
+
+      # Timer started: queue timer_started sound (guard I2S bus on shared hardware)
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_va_timer_started}";'
+          then:
+            - logger.log: "Audio: Timer started - queuing sound"
+            - if:
+                condition:
+                  lambda: 'return std::string("${i2s_shared_bus}") == "true";'
+                then:
+                  # Shared I2S bus: stop mic, play, wait for completion
+                  # (Voice State Manager will restore listening based on canonical state)
+                  - script.execute: microphone_stop_listening
+                  - script.wait: microphone_stop_listening
+                  - script.execute:
+                      id: play_sound
+                      priority: true
+                      sound_file: !lambda return id(timer_started_sound);
+                  - script.wait: play_sound
+                  # Do NOT resume voice assistant here; Voice State Manager
+                  # controls wake-word/assistant lifecycle based on canonical state.
+                  # Unconditionally re-arming would break muted/idle state tracking.
+                else:
+                  # Separate buses: play sound without stopping mic
+                  - script.execute:
+                      id: play_sound
+                      priority: false
+                      sound_file: !lambda return id(timer_started_sound);
+
+      # Timer finished: play looping alarm
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_va_timer_finished}";'
+          then:
+            - logger.log: "Audio: Timer finished - starting alarm"
+            - script.execute: timer_play_looping_alarm
+
+      # Timer cancelled: stop any looping alarm
+      - if:
+          condition:
+            lambda: 'return event_type == "${evt_va_timer_cancelled}";'
+          then:
+            - logger.log: "Audio: Timer cancelled - stopping alarm"
+            - script.execute: timer_stop_looping_alarm
+
       - logger.log:
           format: "Audio Manager: Handled event %s"
           args: ["event_type.c_str()"]
 
   - id: play_sound
+    mode: queued
     parameters:
       priority: bool
       sound_file: "audio::AudioFile*"
@@ -151,3 +198,67 @@ script:
                 id: va_speaker
           timeout: 5s
       - delay: 300ms
+
+  ############################################################################
+  ## Module Hooks - Called by modules to queue sounds
+  ##
+  ## Modules can call these scripts to queue sounds for playback.
+  ## This allows modules to provide audio feedback without tight coupling.
+  ############################################################################
+
+  - id: audio_queue_sound
+    mode: queued
+    parameters:
+      sound_key: string
+    then:
+      - logger.log:
+          format: "Audio: Queue sound '%s'"
+          args: ["sound_key.c_str()"]
+      
+      # Module sound routing
+      # Modules call this script with sound_key (e.g., "timer_started", "timer_alarm")
+      - if:
+          condition:
+            lambda: 'return sound_key == "timer_started";'
+          then:
+            - script.execute:
+                id: play_sound
+                priority: false
+                sound_file: !lambda return id(timer_started_sound);
+            - script.wait: play_sound
+      
+      - if:
+          condition:
+            lambda: 'return sound_key == "timer_alarm";'
+          then:
+            - script.execute:
+                id: play_sound
+                priority: true
+                sound_file: !lambda return id(timer_alarm_sound);
+            - script.wait: play_sound
+      
+      - if:
+          condition:
+            lambda: 'return sound_key == "mute_on";'
+          then:
+            - script.execute:
+                id: play_sound
+                priority: false
+                sound_file: !lambda return id(mute_on_sound);
+            - script.wait: play_sound
+      
+      - if:
+          condition:
+            lambda: 'return sound_key == "mute_off";'
+          then:
+            - script.execute:
+                id: play_sound
+                priority: false
+                sound_file: !lambda return id(mute_off_sound);
+            - script.wait: play_sound
+
+  - id: audio_stop_sound
+    mode: queued
+    then:
+      - logger.log: "Audio: Stop current sound"
+      - media_player.stop: va_media_player

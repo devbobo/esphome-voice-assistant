@@ -24,14 +24,21 @@
 ##   - mic_muted:                Microphone switch toggled off (capture stopped)
 ##   - mic_unmuted:              Microphone switch toggled on
 ##   - audio_ready:              Startup sound flow completed; safe to re-arm wake word
+##   - voice_assist_start:           Voice assist pipeline started
+##   - voice_assist_listening:       Microphone listening for speech
+##   - voice_assist_wake_word_detected: Wake word detected
+##   - voice_assist_stt_vad_start:   Voice activity detected (STT starting)
+##   - voice_assist_stt_end:         Speech-to-text complete
+##   - voice_assist_intent_start:    Intent processing started
+##   - voice_assist_intent_progress: Intent streaming
+##   - voice_assist_intent_end:      Intent processing complete
+##   - voice_assist_tts_start:       Text-to-speech started (response being generated)
+##   - voice_assist_tts_end:         Text-to-speech complete
 ##   - voice_assist_idle:        Voice assistant session ended (on_end fired)
-##   - wake_acknowledged:        Wake feedback is starting (beep/ring sync point)
-##   - voice_assist_listening:   Voice assistant is listening for speech
-##   - voice_assist_thinking:    Speech detected, processing STT
-##   - voice_assist_replying:    TTS started (HA generating reply)
 ##   - voice_assist_error:       Voice assistant encountered an error
-##   - wake_word_stop_requested: Any component requesting wake word to stop
-##   - wake_word_location_changed: Wake word engine (device/HA) changed
+##   - voice_assist_client_connected: HA API connected
+##   - voice_assist_client_disconnected: HA API disconnected
+##   - voice_assist_timer_*:     Timer events (started, updated, tick, finished, cancelled)
 ##
 ## Usage Examples:
 ##   Publish from device voice_assistant package:
@@ -60,11 +67,25 @@ substitutions:
   evt_mic_unmuted:                "mic_unmuted"
   evt_audio_ready:                "audio_ready"
   evt_va_idle:                    "voice_assist_idle"
-  evt_wake_acknowledged:          "wake_acknowledged"
+  evt_va_start:                   "voice_assist_start"
   evt_va_listening:               "voice_assist_listening"
-  evt_va_thinking:                "voice_assist_thinking"
-  evt_va_replying:                "voice_assist_replying"
+  evt_va_wake_word_detected:      "voice_assist_wake_word_detected"
+  evt_va_stt_vad_start:           "voice_assist_stt_vad_start"
+  evt_va_stt_vad_end:             "voice_assist_stt_vad_end"
+  evt_va_stt_end:                 "voice_assist_stt_end"
+  evt_va_intent_start:            "voice_assist_intent_start"
+  evt_va_intent_progress:         "voice_assist_intent_progress"
+  evt_va_intent_end:              "voice_assist_intent_end"
+  evt_va_tts_start:               "voice_assist_tts_start"
+  evt_va_tts_end:                 "voice_assist_tts_end"
   evt_va_error:                   "voice_assist_error"
+  evt_va_client_connected:        "voice_assist_client_connected"
+  evt_va_client_disconnected:     "voice_assist_client_disconnected"
+  evt_va_timer_started:           "voice_assist_timer_started"
+  evt_va_timer_updated:           "voice_assist_timer_updated"
+  evt_va_timer_tick:              "voice_assist_timer_tick"
+  evt_va_timer_finished:          "voice_assist_timer_finished"
+  evt_va_timer_cancelled:         "voice_assist_timer_cancelled"
   evt_wake_word_stop_requested:   "wake_word_stop_requested"
   evt_wake_word_location_changed: "wake_word_location_changed"
 
@@ -98,11 +119,25 @@ event:
       - ${evt_mic_unmuted}
       - ${evt_audio_ready}
       - ${evt_va_idle}
-      - ${evt_wake_acknowledged}
+      - ${evt_va_start}
+      - ${evt_va_wake_word_detected}
       - ${evt_va_listening}
-      - ${evt_va_thinking}
-      - ${evt_va_replying}
+      - ${evt_va_stt_vad_start}
+      - ${evt_va_stt_vad_end}
+      - ${evt_va_stt_end}
+      - ${evt_va_intent_start}
+      - ${evt_va_intent_progress}
+      - ${evt_va_intent_end}
+      - ${evt_va_tts_start}
+      - ${evt_va_tts_end}
       - ${evt_va_error}
+      - ${evt_va_client_connected}
+      - ${evt_va_client_disconnected}
+      - ${evt_va_timer_started}
+      - ${evt_va_timer_updated}
+      - ${evt_va_timer_tick}
+      - ${evt_va_timer_finished}
+      - ${evt_va_timer_cancelled}
       - ${evt_wake_word_stop_requested}
       - ${evt_wake_word_location_changed}
     on_event:
@@ -149,10 +184,10 @@ event:
                 "${evt_mic_muted}",
                 "${evt_mic_unmuted}",
                 "${evt_va_idle}",
-                "${evt_wake_acknowledged}",
+                "${evt_va_wake_word_detected}",
                 "${evt_va_listening}",
-                "${evt_va_thinking}",
-                "${evt_va_replying}",
+                "${evt_va_stt_vad_end}",
+                "${evt_va_tts_start}",
                 "${evt_va_error}"
               }.count(event_type) > 0;
           then:
@@ -186,6 +221,50 @@ event:
                 id: voice_state_manager_handle_event
                 event_type: !lambda return event_type;
 
+      # Audio State Manager - handle timer audio events
+      - if:
+          condition:
+            lambda: >-
+              return std::set<std::string>{
+                "${evt_va_timer_started}",
+                "${evt_va_timer_finished}",
+                "${evt_va_timer_cancelled}",
+              }.count(event_type) > 0;
+          then:
+            - script.execute:
+                id: audio_state_manager_handle_event
+                event_type: !lambda return event_type;
+
+      # LED Ring Manager - handle timer LED events
+      - if:
+          condition:
+            lambda: |-
+              return std::set<std::string>{
+                "${evt_va_timer_started}",
+                "${evt_va_timer_finished}",
+                "${evt_va_timer_cancelled}"
+              }.count(event_type) > 0;
+          then:
+            - script.execute:
+                id: led_ring_handle_timer_event
+                timer_event: !lambda return event_type;
+
+      # Display Manager - handle all timer display events
+      - if:
+          condition:
+            lambda: >-
+              return std::set<std::string>{
+                "${evt_va_timer_started}",
+                "${evt_va_timer_updated}",
+                "${evt_va_timer_tick}",
+                "${evt_va_timer_finished}",
+                "${evt_va_timer_cancelled}",
+              }.count(event_type) > 0;
+          then:
+            - script.execute:
+                id: display_manager_handle_timer_event
+                timer_event: !lambda return event_type;
+
 packages:
   interaction_manager: !include managers/interaction.yaml
   audio_manager: !include managers/audio.yaml
@@ -193,3 +272,4 @@ packages:
   led_ring_manager: !include managers/led_ring.yaml
   touchscreen_manager: !include managers/touchscreen.yaml
   display_manager: !include managers/display.yaml
+

@@ -12,9 +12,10 @@
 ## LED Ring States:
 ##   - not_connected: Device is not connected to Home Assistant
 ##   - idle: Device ready but not listening
-##   - listening: Wake feedback started or assistant is listening
+##   - wake_word_detected: Wake word detected (brief pulse/flash feedback)
+##   - listening: Voice assistant actively listening for speech
+##   - processing: Voice command recognized or TTS playing
 ##   - muted: Microphone disabled (solid red)
-##   - processing: Voice command recognized
 ##   - error: System error or communication issue
 ##
 ## Separation of Concerns:
@@ -26,19 +27,38 @@
 substitutions:
   # LED Event Types (published by this manager)
   led_event_not_connected: "not_connected"
+  led_event_wake_word_detected: "wake_word_detected"
   led_event_listening: "listening"
   led_event_muted: "muted"
   led_event_processing: "processing"
   led_event_idle: "idle"
   led_event_error: "error"
+  led_event_timer_done: "timer_done"
 
-  # LED Ring State Colors (consumed by UI and device handlers)
-  led_color_not_connected: "0x8B6A2A"
-  led_color_idle: "0x343D52"
-  led_color_listening: "0x20A6FF"
-  led_color_processing: "0x47D27B"
-  led_color_muted: "0xDE4A4A"
-  led_color_error: "0xDE4A4A"
+  # Color Palette - Base hex values
+  color_brown: "0x8B6A2A"
+  color_blue: "0x20A6FF"
+  color_dark_blue: "0x343D52"
+  color_green: "0x47D27B"
+  color_bright_green: "0x00FF00"
+  color_orange: "0xFFA500"
+  color_bright_orange: "0xFF8800"
+  color_red: "0xDE4A4A"
+  color_white: "0xFFFFFF"
+  color_black: "0x000000"
+  color_gray: "0x888888"
+  color_dark_gray: "0x444444"
+  color_light_gray: "0xCCCCCC"
+
+  # State-specific colors (reference palette for easy customization)
+  led_color_not_connected: ${color_brown}
+  led_color_wake_word_detected: ${color_blue}
+  led_color_idle: ${color_dark_blue}
+  led_color_listening: ${color_green}
+  led_color_processing: ${color_bright_green}
+  led_color_muted: ${color_red}
+  led_color_error: ${color_red}
+  led_color_timer_done: ${color_bright_orange}
 
 ## LED State Tracking
 globals:
@@ -86,6 +106,13 @@ script:
                 event_type: "${led_event_muted}"
       - if:
           condition:
+            lambda: 'return interaction_state == "${istate_wake_word_detected}";'
+          then:
+            - event.trigger:
+                id: led_event
+                event_type: "${led_event_wake_word_detected}"
+      - if:
+          condition:
             lambda: 'return interaction_state == "${istate_listening}";'
           then:
             - event.trigger:
@@ -118,6 +145,56 @@ script:
   - id: led_ring_apply_device_handler
     then: ${led_ring_state_handler}
 
+  ################################################################################
+  ## Timer Event Handler
+  ##
+  ## Translates timer events into LED states.
+  ################################################################################
+  - id: led_ring_handle_timer_event
+    mode: queued
+    parameters:
+      timer_event: string
+    then:
+      # Timer started: show processing state
+      - if:
+          condition:
+            lambda: 'return timer_event == "${evt_va_timer_started}";'
+          then:
+            - logger.log: "LED Ring: Timer started - showing processing state"
+            - event.trigger:
+                id: led_event
+                event_type: "${led_event_processing}"
+
+      # Timer finished: show timer_done LED state
+      - if:
+          condition:
+            lambda: 'return timer_event == "${evt_va_timer_finished}";'
+          then:
+            - logger.log: "LED Ring: Timer finished - showing timer_done state"
+            - event.trigger:
+                id: led_event
+                event_type: "${led_event_timer_done}"
+
+      # Timer cancelled with no timers active: return to idle
+      # NOTE: We explicitly force idle (not canonical state) when timer ends because:
+      # (1) Canonical interaction state may include timer info; resetting to idle clears timer-specific LED
+      # (2) Interaction manager will re-publish canonical state if needed, which will override idle
+      # (3) This ensures LED reflects "no active timer" state immediately, not residual muted/error state
+      - if:
+          condition:
+            lambda: 'return timer_event == "${evt_va_timer_cancelled}";'
+          then:
+            - script.execute: timer_check_has_active
+            - script.wait: timer_check_has_active
+            - if:
+                condition:
+                  lambda: 'return !id(timer_has_active);'
+                then:
+                  - logger.log: "LED Ring: No more timers - returning to idle"
+                  - event.trigger:
+                      id: led_event
+                      event_type: "${led_event_idle}"
+
 
 ## LED Event Platform
 ##
@@ -131,11 +208,13 @@ event:
     icon: "mdi:led-on"
     event_types:
       - ${led_event_not_connected}
+      - ${led_event_wake_word_detected}
       - ${led_event_listening}
       - ${led_event_muted}
       - ${led_event_processing}
       - ${led_event_idle}
       - ${led_event_error}
+      - ${led_event_timer_done}
     on_event:
       - lambda: |-
           id(led_ring_state) = event_type;

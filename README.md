@@ -9,10 +9,15 @@ This root README is the setup and usage guide. For deep implementation details, 
 
 This project is based on the original work by **RealDeco** at [xiaozhi-esphome](https://github.com/RealDeco/xiaozhi-esphome/). The original monolithic configuration has been refactored into a modular architecture.
 
+### Audio Credits
+
+This project uses sounds from the [Home Assistant Voice Preview Edition](https://github.com/esphome/home-assistant-voice-pe) © 2024 by [Clayton Charles Tapp](https://www.cctaudio.com/), licensed under [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/).
+
 ## What This Project Provides
 
 - Modular structure separating shared logic from device-specific hardware
 - Event-driven voice assistant behavior for cleaner feature composition
+- Native timer support with voice commands, display UI, audio feedback, and LED integration
 - Reusable include packages for voice assistant, media player, sounds, and touchscreen handlers
 - Internationalized labels and strings via substitutions
 
@@ -58,6 +63,40 @@ esphome compile base.yaml
 esphome flash base.yaml
 esphome logs base.yaml
 ```
+
+## Recommended: Home Assistant Integration
+
+Most users will integrate this project with Home Assistant's ESPHome add-on:
+
+1. **Clone** this repository into your Home Assistant config folder:
+   ```bash
+   cd /config/esphome/
+   git clone https://github.com/devbobo/esphome-voice-assistant.git
+   ```
+
+2. **Create a device configuration** in Home Assistant's ESPHome directory (e.g., `echo-ear.yaml`):
+   ```yaml
+   substitutions:
+     name: echo-ear
+     friendly_name: ESPHome Voice Assistant
+     device: espressif/echoear
+
+   packages:
+     voice-assistant: !include esphome-voice-assistant/base.yaml
+
+   wifi:
+     ssid: !secret wifi_ssid
+     password: !secret wifi_password
+   ```
+
+3. **Pull updates** to the project and rebuild on HA:
+   ```bash
+   cd /config/esphome/esphome-voice-assistant
+   git pull
+   ```
+   Then rebuild the device in Home Assistant's ESPHome dashboard.
+
+The modular architecture allows `base.yaml` to package all framework logic, while your device YAML adds instance-specific configuration (WiFi, device name, etc.).
 
 ## Basic Configuration
 
@@ -116,4 +155,8 @@ For architecture internals, event flows, manager responsibilities, and a detaile
 
 ## Status
 
-Production-ready for voice assistant, gesture detection, and battery monitoring. Additional display rendering and advanced timer UI integration are in progress.
+Production-ready for:
+- Voice assistant with wake-word detection
+- Native timer management (set, update, cancel, display, audio, LED feedback)
+- Gesture detection and touchscreen navigation
+- Battery monitoring (EchoEar)

@@ -128,12 +128,13 @@ script:
   ## Deactivates the wake word in both modes (device and HA).
   ################################################################################
   - id: stop_wake_word
+    mode: restart
     then:
       - logger.log: "Voice: Stopping wake word"
       - script.stop: start_wake_word
-      # Ensure I2S mic path is released before any announcement playback.
-      - microphone.stop_capture:
-          id: va_microphone
+      # Ensure I2S mic path is released before any announcement playback (if on shared bus).
+      - script.execute: microphone_stop_capture_if_shared_bus
+      - script.wait: microphone_stop_capture_if_shared_bus
       - if:
           condition:
             lambda: >-

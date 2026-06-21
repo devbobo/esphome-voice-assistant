@@ -94,7 +94,8 @@ Each device should define:
 
 Common reusable fragments in `devices/includes/`:
 
-- `voice_assistant/common.yaml`
+- `voice_assistant/common.yaml` - Voice assistant lifecycle and mute control
+- `voice_assistant/timer.yaml` - Native timer support with display, audio, and LED integration
 - `media_player/common.yaml`
 - `media_player/on_announcement.yaml`
 - `media_player/on_idle.yaml`
@@ -141,6 +142,54 @@ voice/media/api/mic events
 - Interaction manager for canonical interaction semantics
 - LED and display managers for feedback rendering from canonical state
 - Touchscreen manager for input dispatch
+
+## Timer System Architecture
+
+Timers are managed through ESPHome's native voice_assistant Timer API with full display, audio, and LED ring integration.
+
+### Timer Event Flow
+
+```text
+voice_assistant timers (native API)
+   -> timer lifecycle events
+   -> event_router.yaml
+   -> managers/
+      -> audio.yaml (plays alarm/start sounds)
+      -> led_ring.yaml (renders LED state)
+      -> display.yaml (renders timer UI)
+```
+
+### Timer Event Types
+
+- `voice_assist_timer_started`: Timer created via voice or manual trigger
+- `voice_assist_timer_updated`: Timer duration/name changed
+- `voice_assist_timer_tick`: Timer tick (one-second countdown update)
+- `voice_assist_timer_finished`: Timer countdown reached zero
+- `voice_assist_timer_cancelled`: Timer stopped by user
+
+### Timer Module (`devices/includes/voice_assistant/timer.yaml`)
+
+Central timer state management and event handling:
+
+- **State Storage**: Tracks active timers from voice_assistant API (`id(va).get_timers()`)
+- **Selection Logic**: Supports multiple timer navigation modes (first_active, newest_active, navigate_next, navigate_prev)
+- **Display Rendering**: Updates LVGL UI with timer count, name, remaining time, and circular progress arc
+- **Home Assistant Entities**: Binary sensor (is_active), sensors (remaining_seconds, count_all, count_active), text_sensor (current_name)
+- **Audio Playback**: Synchronous looping alarm with I2S bus contention guards on shared-bus hardware
+- **Event Publishing**: Publishes 5 timer lifecycle events for distributed event handling
+
+### Manager Responsibilities
+
+- **Audio Manager**: Queues timer-start sound, handles looping alarm playback with synchronized sound waits
+- **LED Ring Manager**: Renders timer-ringing state as distinct LED color/animation
+- **Display Manager**: Manages timer view/page model and recomputes timer state for rendering
+
+### I2S Bus Contention Guards
+
+On hardware with shared I2S microphone/speaker bus (e.g., EchoEar):
+- Timer-start sound: Stops microphone before playback via `microphone_stop_listening` guard
+- Alarm playback: Uses `timer_play_looping_alarm` which guards via `microphone_stop_listening` (conditionally on shared bus)
+- Prevents "Parent bus is busy" errors during simultaneous capture and playback attempts
 
 ## Voice Assistant Architecture
 

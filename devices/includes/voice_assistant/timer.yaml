@@ -1,0 +1,613 @@
+# Timer Module for Voice Assistant
+# Handles native ESPHome voice_assistant timers with full UI/display support
+# Includes:
+#   - Timer state tracking (globals)
+#   - Timer management scripts
+#   - Timer UI components
+#   - Timer event handlers
+
+################################################################################
+## Timer State Tracking & Display
+## Native ESPHome voice_assistant timers are core functionality
+################################################################################
+
+globals:
+  # Timer state for primary active timer (used for display/HA entities)
+  - id: timer_active_id
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+
+  - id: timer_active_name
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+
+  - id: timer_seconds_remaining
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+  # Multi-timer support: track first active and first timer
+  - id: timer_first_active
+    type: esphome::voice_assistant::Timer
+    restore_value: no
+
+  - id: timer_first
+    type: esphome::voice_assistant::Timer
+    restore_value: no
+
+  - id: timer_has_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+  - id: timer_has_any
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+script:
+  ################################################################################
+  ## Timer State & Management Scripts
+  ################################################################################
+  - id: timer_update_current_tick
+    then:
+      - lambda: |-
+          // Find the currently viewed timer by ID and update its remaining_sec from the live timer list
+          const auto &timers = id(va).get_timers();
+          const std::string current_id = id(timer_first_active).id;
+          
+          if (current_id.empty()) {
+            ESP_LOGW("timer", "[TICK_UPDATE] FAILED: current timer ID is empty");
+            return;
+          }
+          
+          // Find the timer with matching ID in the live list and copy fresh data
+          uint32_t fresh_seconds_left = 0;
+          bool found = false;
+          int total_timers = 0;
+          
+          for (const auto &timer : timers) {
+            total_timers++;
+            if (timer.id == current_id) {
+              fresh_seconds_left = timer.seconds_left;
+              found = true;
+              break;
+            }
+          }
+          
+          if (!found) {
+            ESP_LOGW("timer", "[TICK_UPDATE] FAILED: Timer id=%s not found in live list (total_timers=%d)", current_id.c_str(), total_timers);
+            return;
+          }
+          
+          // Update the cached copy with fresh remaining time
+          id(timer_first_active).seconds_left = fresh_seconds_left;
+          ESP_LOGD("timer", "[TICK_UPDATE] SUCCESS: id=%s, name=%s, fresh_remaining=%u sec", current_id.c_str(), id(timer_first_active).name.c_str(), fresh_seconds_left);
+      - script.execute: timer_format_time_display
+
+  - id: timer_fetch_first_active
+    then:
+      - script.execute: timer_select_first_active
+      - script.wait: timer_select_first_active
+
+  - id: timer_fetch_newest_active
+    then:
+      - script.execute: timer_select_newest_active
+      - script.wait: timer_select_newest_active
+
+  - id: timer_check_has_active
+    then:
+      - lambda: |-
+          const auto &timers = id(va).get_timers();
+          bool has_active = false;
+          for (const auto &timer : timers) {
+            if (timer.is_active) {
+              has_active = true;
+              break;
+            }
+          }
+          id(timer_has_active) = has_active;
+
+  - id: timer_fetch_first
+    then:
+      - lambda: |-
+          const auto &timers = id(va).get_timers();
+          if (timers.empty()) return;
+          auto output_timer = *timers.begin();
+          for (const auto &timer : timers) {
+            if (timer.seconds_left <= output_timer.seconds_left) {
+              output_timer = timer;
+            }
+          }
+          id(timer_first) = output_timer;
+
+  - id: timer_check_has_any
+    then:
+      - lambda: |-
+          const auto &timers = id(va).get_timers();
+          id(timer_has_any) = !timers.empty();
+
+  ################################################################################
+  ## Helper: Format Time Display
+  ## Centralizes the MM:SS or H:MM:SS formatting logic to avoid duplication
+  ################################################################################
+  - id: timer_format_time_display
+    then:
+      - lambda: |-
+          // Format timer_first_active remaining/total time and update UI
+          auto total_sec = id(timer_first_active).total_seconds;
+          auto remaining_sec = id(timer_first_active).seconds_left;
+          
+          // Format time string
+          char buf[16];
+          if (total_sec >= 3600) {
+            uint16_t remaining_h = remaining_sec / 3600;
+            uint16_t remaining_min = (remaining_sec % 3600) / 60;
+            uint16_t remaining_s = remaining_sec % 60;
+            snprintf(buf, sizeof(buf), "%u:%02u:%02u", remaining_h, remaining_min, remaining_s);
+          } else {
+            uint16_t remaining_min = remaining_sec / 60;
+            uint16_t remaining_s = remaining_sec % 60;
+            snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
+          }
+          
+          // Update timer label
+          auto label_timer = (lv_obj_t *)id(ui_timer_value);
+          if (label_timer != nullptr) {
+            lv_label_set_text(label_timer, buf);
+            ESP_LOGD("timer", "[FORMAT_TIME] Display updated: %s", buf);
+          }
+          
+          // Update progress arc
+          auto arc = (lv_obj_t *)id(ui_timer_arc);
+          if (arc != nullptr) {
+            uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
+            lv_arc_set_end_angle(arc, end_angle);
+            ESP_LOGD("timer", "[FORMAT_TIME] Arc updated: angle=%u deg", end_angle);
+          }
+
+  ################################################################################
+  ## Helper: Find First Active Timer (soonest to expire)
+  ################################################################################
+  - id: timer_select_first_active
+    then:
+      - lambda: |-
+          const auto &timers = id(va).get_timers();
+          if (timers.empty()) {
+            ESP_LOGW("timer", "[SELECT_FIRST_ACTIVE] No timers available");
+            return;
+          }
+          
+          esphome::voice_assistant::Timer output_timer{};
+          output_timer.id = "";
+          for (const auto &timer : timers) {
+            if (timer.is_active) {
+              if (output_timer.id.empty() || timer.seconds_left <= output_timer.seconds_left) {
+                output_timer = timer;
+              }
+            }
+          }
+          
+          if (!output_timer.id.empty()) {
+            id(timer_first_active) = output_timer;
+            id(timer_active_id) = output_timer.id;
+            id(timer_active_name) = output_timer.name;
+            id(timer_seconds_remaining) = output_timer.seconds_left;
+            ESP_LOGI("timer", "[SELECT_FIRST_ACTIVE] Selected: id=%s, name=%s, remaining=%u sec", 
+                     output_timer.id.c_str(), output_timer.name.c_str(), output_timer.seconds_left);
+          } else {
+            ESP_LOGW("timer", "[SELECT_FIRST_ACTIVE] No active timers found");
+          }
+
+  ################################################################################
+  ## Helper: Find Newest Active Timer (most recently created)
+  ################################################################################
+  - id: timer_select_newest_active
+    then:
+      - lambda: |-
+          const auto &timers = id(va).get_timers();
+          if (timers.empty()) {
+            ESP_LOGW("timer", "[SELECT_NEWEST_ACTIVE] No timers available");
+            return;
+          }
+          
+          esphome::voice_assistant::Timer newest_timer{};
+          newest_timer.id = "";
+          for (const auto &timer : timers) {
+            if (timer.is_active) {
+              newest_timer = timer;  // Always use last active timer encountered
+            }
+          }
+          
+          if (!newest_timer.id.empty()) {
+            id(timer_first_active) = newest_timer;
+            id(timer_active_id) = newest_timer.id;
+            id(timer_active_name) = newest_timer.name;
+            id(timer_seconds_remaining) = newest_timer.seconds_left;
+            ESP_LOGI("timer", "[SELECT_NEWEST_ACTIVE] Selected: id=%s, name=%s, remaining=%u sec", 
+                     newest_timer.id.c_str(), newest_timer.name.c_str(), newest_timer.seconds_left);
+          } else {
+            ESP_LOGW("timer", "[SELECT_NEWEST_ACTIVE] No active timers found");
+          }
+
+  ################################################################################
+  ## Helper: Apply Timer Selection (update all state globals)
+  ## Used by next/prev navigation to avoid duplication
+  ################################################################################
+  - id: timer_apply_selection
+    parameters:
+      direction: string
+    then:
+      - lambda: |-
+          // direction: "next" or "prev" (for logging)
+          // timer_first_active must be pre-set by caller with desired timer
+          id(timer_active_id) = id(timer_first_active).id;
+          id(timer_active_name) = id(timer_first_active).name;
+          id(timer_seconds_remaining) = id(timer_first_active).seconds_left;
+          ESP_LOGI("timer", "[SELECT_%s] Selected: id=%s, name=%s, remaining=%u sec", 
+                   direction.c_str(), 
+                   id(timer_first_active).id.c_str(), 
+                   id(timer_first_active).name.c_str(), 
+                   id(timer_first_active).seconds_left);
+
+  ################################################################################
+  ## Helper: Navigate to Next Active Timer (cycle forward)
+  ################################################################################
+  - id: timer_select_next_active
+    then:
+      - lambda: |-
+          const auto &timers = id(va).get_timers();
+          if (timers.empty()) {
+            ESP_LOGW("timer", "[SELECT_NEXT] No timers available");
+            return;
+          }
+          
+          esphome::voice_assistant::Timer first_active{};
+          esphome::voice_assistant::Timer next_timer{};
+          first_active.id = "";
+          next_timer.id = "";
+          bool found_current = false;
+          
+          for (const auto &timer : timers) {
+            if (!timer.is_active) continue;
+            if (first_active.id.empty()) first_active = timer;
+            if (found_current && next_timer.id.empty()) {
+              next_timer = timer;
+              break;
+            }
+            if (timer.id == id(timer_first_active).id) {
+              found_current = true;
+            }
+          }
+          
+          // Wrap to first if no next timer found
+          id(timer_first_active) = next_timer.id.empty() ? first_active : next_timer;
+      - script.execute:
+          id: timer_apply_selection
+          direction: "NEXT"
+
+  ################################################################################
+  ## Helper: Navigate to Previous Active Timer (cycle backward)
+  ################################################################################
+  - id: timer_select_prev_active
+    then:
+      - lambda: |-
+          const auto &timers = id(va).get_timers();
+          if (timers.empty()) {
+            ESP_LOGW("timer", "[SELECT_PREV] No timers available");
+            return;
+          }
+          
+          esphome::voice_assistant::Timer prev_timer{};
+          esphome::voice_assistant::Timer last_active{};
+          prev_timer.id = "";
+          last_active.id = "";
+          
+          for (const auto &timer : timers) {
+            if (!timer.is_active) continue;
+            if (timer.id == id(timer_first_active).id) {
+              if (!prev_timer.id.empty()) {
+                last_active = prev_timer;
+              }
+              break;
+            }
+            prev_timer = timer;
+            last_active = prev_timer;
+          }
+          
+          // Wrap: find actual last active if not set
+          if (last_active.id.empty()) {
+            for (const auto &timer : timers) {
+              if (timer.is_active) {
+                last_active = timer;
+              }
+            }
+          }
+          
+          // Apply the selection (update globals)
+          if (!last_active.id.empty()) {
+            id(timer_first_active) = last_active;
+          }
+      - script.execute:
+          id: timer_apply_selection
+          direction: "PREV"
+
+  - id: timer_navigate_next
+    then:
+      - script.execute: timer_select_next_active
+      - script.wait: timer_select_next_active
+      - script.execute: timer_update_display
+
+  - id: timer_navigate_prev
+    then:
+      - script.execute: timer_select_prev_active
+      - script.wait: timer_select_prev_active
+      - script.execute: timer_update_display
+
+  - id: timer_get_current
+    then:
+      - lambda: |-
+          // Validate if current selection is valid
+          // Compute timer_has_active directly from voice assistant API (side-effect free)
+          const auto &timers = id(va).get_timers();
+          bool has_active = false;
+          for (const auto &timer : timers) {
+            if (timer.is_active) {
+              has_active = true;
+              break;
+            }
+          }
+          
+          // Update the global for downstream consumers
+          id(timer_has_active) = has_active;
+          
+          if (has_active && !id(timer_first_active).id.empty()) {
+            ESP_LOGD("timer", "[GET_CURRENT] VALID: id=%s, name=%s, remaining=%u sec",
+                     id(timer_first_active).id.c_str(), id(timer_first_active).name.c_str(),
+                     id(timer_first_active).seconds_left);
+          } else {
+            ESP_LOGW("timer", "[GET_CURRENT] INVALID: has_active=%d, id_empty=%d",
+                     has_active, id(timer_first_active).id.empty());
+          }
+
+  - id: timer_render_display
+    then:
+      - lambda: |-
+          auto total_sec = id(timer_first_active).total_seconds;
+          auto remaining_sec = id(timer_first_active).seconds_left;
+          ESP_LOGD("timer", "[RENDER_DISPLAY] id=%s, total=%u sec, remaining=%u sec",
+                   id(timer_first_active).id.c_str(), total_sec, remaining_sec);
+          
+          // Update timer countdown (MM:SS or H:MM:SS format)
+          auto label_timer = (lv_obj_t *)id(ui_timer_value);
+          if (label_timer != nullptr) {
+            char buf[16];
+            if (total_sec >= 3600) {
+              uint16_t remaining_h = remaining_sec / 3600;
+              uint16_t remaining_min = (remaining_sec % 3600) / 60;
+              uint16_t remaining_s = remaining_sec % 60;
+              snprintf(buf, sizeof(buf), "%u:%02u:%02u", remaining_h, remaining_min, remaining_s);
+            } else {
+              uint16_t remaining_min = remaining_sec / 60;
+              uint16_t remaining_s = remaining_sec % 60;
+              snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
+            }
+            lv_label_set_text(label_timer, buf);
+          }
+          
+          // Update total duration label (1 HR., 30 MINS., 45 SEC. etc)
+          auto label_duration = (lv_obj_t *)id(ui_timer_duration);
+          if (label_duration != nullptr) {
+            char buf_duration[16];
+            if (total_sec >= 3600) {
+              uint16_t hours = total_sec / 3600;
+              snprintf(buf_duration, sizeof(buf_duration), "%u %s", hours, hours == 1 ? "HR." : "HRS.");
+            } else if (total_sec >= 60) {
+              uint16_t minutes = total_sec / 60;
+              snprintf(buf_duration, sizeof(buf_duration), "%u %s", minutes, minutes == 1 ? "MIN." : "MINS.");
+            } else {
+              snprintf(buf_duration, sizeof(buf_duration), "%u SEC.", total_sec);
+            }
+            lv_label_set_text(label_duration, buf_duration);
+          }
+          
+          // Update timer name
+          auto label_name = (lv_obj_t *)id(ui_timer_name);
+          if (label_name != nullptr) {
+            const std::string& timer_name = id(timer_first_active).name;
+            lv_label_set_text(label_name, timer_name.empty() ? "Timer" : timer_name.c_str());
+          }
+          
+          // Update progress arc showing remaining time (shrinks as time passes)
+          auto arc = (lv_obj_t *)id(ui_timer_arc);
+          if (arc != nullptr) {
+            uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
+            lv_arc_set_end_angle(arc, end_angle);
+          }
+
+  - id: timer_update_display
+    then:
+      - script.execute: timer_get_current
+      - script.wait: timer_get_current
+      - if:
+          condition:
+            - lambda: 'return id(timer_has_active) && !id(timer_first_active).id.empty();'
+          then:
+            - script.execute: timer_render_display
+          else:
+            - logger.log:
+                level: WARN
+                format: "[UPDATE_DISPLAY] Cannot render: no valid timer"
+
+  ################################################################################
+  ## Timer Display Rendering
+  ################################################################################
+  - id: timer_render_countdown
+    then:
+      - logger.log: "Rendering timer countdown"
+      - script.execute: timer_check_has_active
+      - script.wait: timer_check_has_active
+      - if:
+          condition:
+            lambda: 'return id(timer_has_active);'
+          then:
+            - script.execute: timer_fetch_first_active
+            - script.wait: timer_fetch_first_active
+            - lambda: |-
+                const uint32_t remaining_sec = id(timer_first_active).seconds_left;
+                const uint32_t remaining_min = remaining_sec / 60;
+                const uint32_t remaining_s = remaining_sec % 60;
+                ESP_LOGI("timer", "Display: %u:%02u remaining (primary timer)", remaining_min, remaining_s);
+          else:
+            - logger.log:
+                level: WARN
+                format: "[RENDER_COUNTDOWN] No active timer to render"
+
+  - id: timer_render_expired
+    then:
+      - logger.log: "Rendering timer expired"
+      - lambda: |-
+          // Update expired timer page widgets with current timer info
+          auto label_name = (lv_obj_t *)id(ui_expired_timer_name);
+          auto label_duration = (lv_obj_t *)id(ui_expired_timer_duration);
+          auto arc = (lv_obj_t *)id(ui_expired_timer_arc);
+          
+          if (label_name != nullptr) {
+            auto timer_name = id(timer_active_name);
+            lv_label_set_text(label_name, timer_name.empty() ? "Timer" : timer_name.c_str());
+          }
+          
+          if (label_duration != nullptr && arc != nullptr) {
+            auto total_sec = id(timer_first_active).total_seconds;
+            auto total_min = total_sec / 60;
+            char duration_str[16];
+            if (total_sec < 60) {
+              snprintf(duration_str, sizeof(duration_str), "%u SEC.", total_sec);
+            } else if (total_min < 60) {
+              snprintf(duration_str, sizeof(duration_str), "%u MIN.", total_min);
+            } else {
+              auto hours = total_min / 60;
+              snprintf(duration_str, sizeof(duration_str), "%u:%02u HR.", hours, total_min % 60);
+            }
+            lv_label_set_text(label_duration, duration_str);
+            // Show arc at 0 degrees (timer just expired)
+            lv_arc_set_end_angle(arc, 0);
+          }
+          
+          ESP_LOGI("timer", "Display: Timer Expired");
+
+  - id: timer_queue_alarm_if_active
+    then:
+      # Only queue sound if alarm switch is still on
+      - if:
+          condition:
+            switch.is_on: timer_ringing
+          then:
+            - script.execute:
+                id: audio_queue_sound
+                sound_key: "timer_alarm"
+          else:
+            - logger.log: "Timer alarm: Skipped queue (alarm stopped)"
+
+  - id: timer_play_looping_alarm
+    mode: restart
+    then:
+      - logger.log: "Timer alarm: Starting looping playback"
+      - switch.turn_on: timer_ringing
+      # On shared I2S hardware: stop wake word mic to avoid bus contention with alarm playback
+      # NOTE: We do NOT re-arm wake word after alarm completes - that is Voice State Manager's
+      # responsibility via canonical interaction state. Unconditionally re-arming here would
+      # conflict with VSM's authority over wake-word lifecycle (e.g., device may be intentionally
+      # muted or in non-listening mode). Let VSM restore listening based on canonical state.
+      - if:
+          condition:
+            lambda: 'return std::string("${i2s_shared_bus}") == "true";'
+          then:
+            - script.execute: microphone_stop_listening
+            - script.wait: microphone_stop_listening
+      - while:
+          condition:
+            switch.is_on: timer_ringing
+          then:
+            # Guard: only queue if switch still on (prevents accumulation after stop)
+            - script.execute: timer_queue_alarm_if_active
+            # Wait synchronously for sound to finish (prevents queue buildup)
+            - script.wait: audio_queue_sound
+            - wait_until:
+                condition:
+                  not:
+                    media_player.is_announcing:
+            # Brief delay (microphone listens for wake word in this gap if hw supports it)
+            - delay: 50ms
+      - logger.log: "Timer alarm: Looping playback stopped"
+
+  - id: timer_stop_looping_alarm
+    mode: restart
+    then:
+      - logger.log: "Timer alarm: Stopping alarm"
+      - switch.turn_off: timer_ringing
+      - media_player.stop:
+          id: va_media_player
+      - script.execute: audio_stop_sound
+
+text_sensor:
+  - platform: template
+    id: timer_name
+    name: "Timer Name"
+    lambda: |-
+      return id(timer_active_name);
+
+button:
+  - platform: template
+    id: timer_button_cancel
+    name: "Stop Timer"
+    on_press:
+      - logger.log: "Stop alarm button pressed"
+      - script.execute: timer_stop_looping_alarm
+      - voice_assistant.stop:
+
+
+################################################################################
+## Timer Event Handlers
+## Integrated into voice_assistant component
+################################################################################
+
+voice_assistant:
+  on_timer_started:
+    # Publish core event - display/audio/LED managers subscribe and handle orchestration
+    # NOTE: We publish only event_type without caching timer context into globals.
+    # Rationale: Managers can query id(va).get_timers() directly when handling events.
+    # Caching timer context is complex, introduces race conditions, and doesn't scale
+    # well when events fire faster than globals are read. Query API instead.
+    - event.trigger:
+        id: system_event
+        event_type: "${evt_va_timer_started}"
+
+  on_timer_updated:
+    # Publish event - display manager subscribes and updates display
+    - event.trigger:
+        id: system_event
+        event_type: "${evt_va_timer_updated}"
+
+  on_timer_tick:
+    # Publish event - display manager subscribes and updates tick if timer view active
+    - event.trigger:
+        id: system_event
+        event_type: "${evt_va_timer_tick}"
+
+  on_timer_finished:
+    # Publish event - display/audio/LED managers subscribe and handle orchestration
+    # NOTE: Same as on_timer_started - managers read timer state from API on demand.
+    - event.trigger:
+        id: system_event
+        event_type: "${evt_va_timer_finished}"
+
+  on_timer_cancelled:
+    # Publish event - display/audio/LED managers subscribe and handle orchestration
+    # NOTE: Same as on_timer_started - managers read timer state from API on demand.
+    - event.trigger:
+        id: system_event
+        event_type: "${evt_va_timer_cancelled}"
+

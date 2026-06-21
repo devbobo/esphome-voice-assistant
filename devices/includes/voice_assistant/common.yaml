@@ -3,6 +3,23 @@
 # that provides:
 #   - microphone id: va_microphone
 #   - media_player id: va_media_player
+#
+# Includes CORE functionality:
+#   - Timers (native ESPHome voice_assistant timers with full UI/display support)
+#   - Wake word detection
+#   - Voice command processing
+
+################################################################################
+## Import Timer Module
+################################################################################
+
+packages:
+  timer: !include timer.yaml
+
+################################################################################
+## Voice Assistant Core Configuration
+## Wake word detection and voice command processing
+################################################################################
 
 micro_wake_word:
   id: mww
@@ -11,18 +28,18 @@ micro_wake_word:
     - hey_jarvis
     - alexa
   on_wake_word_detected:
-    - event.trigger:
-        id: system_event
-        event_type: "${evt_wake_word_stop_requested}"
-    - wait_until:
+    # Conditionally stop listening if hardware shares I2S bus
+    - if:
         condition:
-          - not:
-              microphone.is_capturing
-        timeout: 3s
-    - delay: 200ms
+          lambda: |-
+            return std::string("${i2s_shared_bus}") == "true";
+        then:
+          - script.execute: microphone_stop_listening
+          - script.wait: microphone_stop_listening
+    # Publish wake word detected event (avoid duplicating micro_wake_word.on_wake_word_detected)
     - event.trigger:
         id: system_event
-        event_type: "${evt_wake_acknowledged}"
+        event_type: "${evt_va_wake_word_detected}"
     - if:
         condition:
           switch.is_on: wake_sound
@@ -50,25 +67,87 @@ voice_assistant:
         id: system_event
         event_type: ${evt_va_listening}
 
+  on_start:
+    - logger.log: "Voice assist pipeline started"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_start}
+
+  on_wake_word_detected:
+    - logger.log: "Wake word detected (voice_assistant)"
+    # Event already triggered by micro_wake_word.on_wake_word_detected above
+
+  on_stt_vad_start:
+    - logger.log: "Voice activity detected"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_stt_vad_start}
+
   on_stt_vad_end:
     - logger.log: "Speech detected, processing..."
     - event.trigger:
         id: system_event
-        event_type: ${evt_va_thinking}
+        event_type: ${evt_va_stt_vad_end}
 
   on_stt_end:
     - logger.log: "Speech transcription complete"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_stt_end}
+
+  on_intent_start:
+    - logger.log: "Intent processing started"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_intent_start}
+
+  on_intent_progress:
+    - logger.log: "Intent progress"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_intent_progress}
+
+  on_intent_end:
+    - logger.log: "Intent processing complete"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_intent_end}
 
   on_tts_start:
     - logger.log: "Playing response"
     - event.trigger:
         id: system_event
-        event_type: ${evt_va_replying}
+        event_type: ${evt_va_tts_start}
 
-  on_end:
+  on_tts_end:
+    - logger.log: "Text-to-speech complete"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_tts_end}
+
+  on_idle:
+    - logger.log: "Voice assistant idle"
     - event.trigger:
         id: system_event
         event_type: ${evt_va_idle}
+
+  on_end:
+    # Voice intent routing for modules
+    - lambda: |-
+        ESP_LOGD("voice", "Voice assistant cycle complete");
+    # Note: evt_va_idle is published in on_idle; avoid duplicate here
+
+  on_client_connected:
+    - logger.log: "Voice assistant client connected"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_client_connected}
+
+  on_client_disconnected:
+    - logger.log: "Voice assistant client disconnected"
+    - event.trigger:
+        id: system_event
+        event_type: ${evt_va_client_disconnected}
 
   on_error:
     - logger.log: "Voice assistant error"
@@ -83,6 +162,43 @@ voice_assistant:
           - logger.log: "Microphone enabled"
         else:
           - logger.log: "Microphone disabled"
+
+script:
+  - id: microphone_stop_listening
+    then:
+      - event.trigger:
+          id: system_event
+          event_type: "${evt_wake_word_stop_requested}"
+      - wait_until:
+          condition:
+            - not:
+                microphone.is_capturing
+          timeout: 3s
+      - delay: 200ms
+
+  - id: toggle_voice_assistant
+    then:
+      - media_player.stop:
+          id: va_media_player
+      - if:
+          condition:
+            not:
+              voice_assistant.is_running:
+          then:
+            - voice_assistant.start:
+          else:
+            - voice_assistant.stop:
+
+  # Stop microphone capture on shared I2S hardware (guards against bus contention with audio playback)
+  - id: microphone_stop_capture_if_shared_bus
+    then:
+      - if:
+          condition:
+            lambda: 'return std::string("${i2s_shared_bus}") == "true";'
+          then:
+            - microphone.stop_capture:
+                id: va_microphone
+            - delay: 100ms  # Allow capture to stop cleanly before playing audio
 
 select:
   - platform: template
@@ -117,27 +233,36 @@ switch:
     optimistic: true
     restore_mode: RESTORE_DEFAULT_OFF
     on_turn_off:
-      - microphone.stop_capture:
-          id: va_microphone
+      # On shared I2S bus: stop microphone first to avoid contention with mute_on sound
+      - script.execute: microphone_stop_capture_if_shared_bus
+      - script.wait: microphone_stop_capture_if_shared_bus
+      - script.execute:
+          id: audio_queue_sound
+          sound_key: "mute_on"
+      - script.wait: audio_queue_sound
       - voice_assistant.stop:
       - event.trigger:
           id: system_event
           event_type: ${evt_mic_muted}
     on_turn_on:
+      # On shared I2S bus: stop microphone first to avoid contention with mute_off sound
+      - script.execute: microphone_stop_capture_if_shared_bus
+      - script.wait: microphone_stop_capture_if_shared_bus
+      - script.execute:
+          id: play_sound
+          priority: true
+          sound_file: !lambda return id(mute_off_sound);
+      - script.wait: play_sound
       - event.trigger:
           id: system_event
           event_type: ${evt_mic_unmuted}
 
-script:
-  - id: toggle_voice_assistant
-    then:
-      - media_player.stop:
-          id: va_media_player
-      - if:
-          condition:
-            not:
-              voice_assistant.is_running:
-          then:
-            - voice_assistant.start:
-          else:
-            - voice_assistant.stop:
+  - platform: template
+    id: timer_ringing
+    name: "Timer Ringing"
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - logger.log: "Timer ringing: Switch turned on"
+    on_turn_off:
+      - logger.log: "Timer ringing: Switch turned off"

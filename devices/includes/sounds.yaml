@@ -7,5 +7,11 @@
   file: ${sound_startup}
 - id: wake_word_triggered_sound
   file: ${sound_wake_word}
-- id: timer_finished_sound
-  file: ${sound_timer_finished}
+- id: timer_started_sound
+  file: ${sound_timer_started}
+- id: timer_alarm_sound
+  file: ${sound_timer_alarm}
+- id: mute_on_sound
+  file: ${sound_mute_on}
+- id: mute_off_sound
+  file: ${sound_mute_off}
