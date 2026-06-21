@@ -118,44 +118,17 @@ script:
 
   - id: timer_fetch_first_active
     then:
-      - lambda: |-
-          const auto &timers = id(va).get_timers();
-          esphome::voice_assistant::Timer output_timer{};
-          output_timer.id = "";
-          bool found_active = false;
-          for (const auto &timer : timers) {
-            if (timer.is_active) {
-              if (!found_active || timer.seconds_left <= output_timer.seconds_left) {
-                output_timer = timer;
-                found_active = true;
-              }
-            }
-          }
-          if (found_active) {
-            id(timer_first_active) = output_timer;
-            ESP_LOGI("timer", "[FETCH_FIRST] Selected timer: id=%s, name=%s, total=%u sec, remaining=%u sec", 
-                     output_timer.id.c_str(), output_timer.name.c_str(), output_timer.total_seconds, output_timer.seconds_left);
-          }
+      # Delegate to centralized state machine
+      - script.execute:
+          id: timer_set_current_selection
+          mode: "first_active"
 
   - id: timer_fetch_newest_active
     then:
-      - lambda: |-
-          const auto &timers = id(va).get_timers();
-          if (timers.empty()) {
-            ESP_LOGW("timer", "timer_fetch_newest_active: no timers available");
-            return;
-          }
-          auto newest_timer = *timers.begin();
-          int count = 0;
-          for (const auto &timer : timers) {
-            if (timer.is_active) count++;
-            if (timer.is_active && timer.seconds_left >= newest_timer.seconds_left) {
-              newest_timer = timer;
-            }
-          }
-          id(timer_first_active) = newest_timer;
-          ESP_LOGI("timer", "[FETCH_NEWEST] Selected timer: id=%s, name=%s, total=%u sec, remaining=%u sec, active_count=%d", 
-                   newest_timer.id.c_str(), newest_timer.name.c_str(), newest_timer.total_seconds, newest_timer.seconds_left, count);
+      # Delegate to centralized state machine
+      - script.execute:
+          id: timer_set_current_selection
+          mode: "newest_active"
 
   - id: timer_check_has_active
     then:
@@ -189,100 +162,155 @@ script:
           const auto &timers = id(va).get_timers();
           id(timer_has_any) = !timers.empty();
 
-  - id: timer_navigate_next
+  ################################################################################
+  ## Timer Selection State Machine
+  ##
+  ## Single source of truth for timer_first_active updates.
+  ## All navigation (next, prev, fetch_first, fetch_newest) call this script
+  ## to ensure consistent state mutation and HA entity updates.
+  ##
+  ## Parameters:
+  ##   - mode: "first_active" (first to expire)
+  ##           "newest_active" (most recent)
+  ##           "navigate_next" (cycle forward)
+  ##           "navigate_prev" (cycle backward)
+  ################################################################################
+  - id: timer_set_current_selection
+    mode: restart
+    parameters:
+      mode: string
     then:
       - lambda: |-
           const auto &timers = id(va).get_timers();
           if (timers.empty()) {
-            ESP_LOGW("timer", "[NAVIGATE_NEXT] FAILED: no timers");
+            ESP_LOGW("timer", "[SET_SELECTION] FAILED: no timers available (mode=%s)", mode.c_str());
             return;
           }
           
-          esphome::voice_assistant::Timer *next_timer = nullptr;
-          esphome::voice_assistant::Timer *first_active = nullptr;
-          bool found_current = false;
-          int active_count = 0;
           const std::string old_id = id(timer_first_active).id;
+          esphome::voice_assistant::Timer *selected_timer = nullptr;
           
-          // First pass: find next timer after current, track first active
-          for (const auto &timer : timers) {
-            if (!timer.is_active) continue;
-            active_count++;
-            if (first_active == nullptr) first_active = (esphome::voice_assistant::Timer *)&timer;
-            if (found_current) {
-              next_timer = (esphome::voice_assistant::Timer *)&timer;
-              break;
+          // Mode: first_active - timer with minimum remaining time (expires first)
+          if (mode == "first_active") {
+            esphome::voice_assistant::Timer output_timer{};
+            output_timer.id = "";
+            for (const auto &timer : timers) {
+              if (timer.is_active) {
+                if (output_timer.id.empty() || timer.seconds_left <= output_timer.seconds_left) {
+                  output_timer = timer;
+                }
+              }
             }
-            if (timer.id == id(timer_first_active).id) {
-              found_current = true;
+            if (!output_timer.id.empty()) {
+              id(timer_first_active) = output_timer;
+              selected_timer = &id(timer_first_active);
             }
           }
           
-          // Wrap to first active if needed
-          if (next_timer == nullptr) {
-            next_timer = first_active;
+          // Mode: newest_active - timer with maximum remaining time (just created)
+          else if (mode == "newest_active") {
+            esphome::voice_assistant::Timer newest_timer{};
+            newest_timer.id = "";
+            for (const auto &timer : timers) {
+              if (timer.is_active) {
+                if (newest_timer.id.empty() || timer.seconds_left >= newest_timer.seconds_left) {
+                  newest_timer = timer;
+                }
+              }
+            }
+            if (!newest_timer.id.empty()) {
+              id(timer_first_active) = newest_timer;
+              selected_timer = &id(timer_first_active);
+            }
           }
           
-          if (next_timer != nullptr) {
-            id(timer_first_active) = *next_timer;
-            id(timer_active_name) = next_timer->name;
-            ESP_LOGI("timer", "[NAVIGATE_NEXT] SUCCESS: old_id=%s -> new_id=%s (name=%s, remaining=%u sec, active_count=%d)", 
-                     old_id.c_str(), next_timer->id.c_str(), next_timer->name.c_str(), next_timer->seconds_left, active_count);
+          // Mode: navigate_next - cycle to next active timer (wrap to first)
+          else if (mode == "navigate_next") {
+            esphome::voice_assistant::Timer first_active{};
+            esphome::voice_assistant::Timer next_timer{};
+            first_active.id = "";
+            next_timer.id = "";
+            bool found_current = false;
+            
+            for (const auto &timer : timers) {
+              if (!timer.is_active) continue;
+              if (first_active.id.empty()) first_active = timer;
+              if (found_current && next_timer.id.empty()) {
+                next_timer = timer;
+                break;
+              }
+              if (timer.id == id(timer_first_active).id) {
+                found_current = true;
+              }
+            }
+            
+            // Wrap to first if no next timer found
+            esphome::voice_assistant::Timer result_timer = next_timer.id.empty() ? first_active : next_timer;
+            if (!result_timer.id.empty()) {
+              selected_timer = &id(timer_first_active);
+              id(timer_first_active) = result_timer;
+            }
+          }
+          
+          // Mode: navigate_prev - cycle to previous active timer (wrap to last)
+          else if (mode == "navigate_prev") {
+            esphome::voice_assistant::Timer prev_timer{};
+            esphome::voice_assistant::Timer last_active{};
+            prev_timer.id = "";
+            last_active.id = "";
+            
+            for (const auto &timer : timers) {
+              if (!timer.is_active) continue;
+              if (timer.id == id(timer_first_active).id) {
+                if (!prev_timer.id.empty()) {
+                  last_active = prev_timer;
+                }
+                break;
+              }
+              prev_timer = timer;
+              last_active = prev_timer;
+            }
+            
+            // Wrap: find actual last active if not set
+            if (last_active.id.empty()) {
+              for (const auto &timer : timers) {
+                if (timer.is_active) {
+                  last_active = timer;
+                }
+              }
+            }
+            
+            if (!last_active.id.empty()) {
+              selected_timer = &id(timer_first_active);
+              id(timer_first_active) = last_active;
+            }
+          }
+          
+          // Update state if a timer was selected
+          if (!id(timer_first_active).id.empty()) {
+            id(timer_active_id) = id(timer_first_active).id;
+            id(timer_active_name) = id(timer_first_active).name;
+            id(timer_seconds_remaining) = id(timer_first_active).seconds_left;
+            ESP_LOGI("timer", "[SET_SELECTION] mode=%s: old_id=%s -> new_id=%s, name=%s, remaining=%u sec", 
+                     mode.c_str(), old_id.c_str(), id(timer_first_active).id.c_str(), id(timer_first_active).name.c_str(), id(timer_first_active).seconds_left);
           } else {
-            ESP_LOGW("timer", "[NAVIGATE_NEXT] FAILED: could not find next timer");
+            ESP_LOGW("timer", "[SET_SELECTION] FAILED: mode=%s resulted in no selection", mode.c_str());
           }
+
+  - id: timer_navigate_next
+    then:
+      # Delegate to centralized state machine
+      - script.execute:
+          id: timer_set_current_selection
+          mode: "navigate_next"
       - script.execute: timer_update_display
 
   - id: timer_navigate_prev
     then:
-      - lambda: |-
-          const auto &timers = id(va).get_timers();
-          if (timers.empty()) {
-            ESP_LOGW("timer", "[NAVIGATE_PREV] FAILED: no timers");
-            return;
-          }
-          
-          esphome::voice_assistant::Timer *prev_timer = nullptr;
-          esphome::voice_assistant::Timer *last_active = nullptr;
-          int active_count = 0;
-          const std::string old_id = id(timer_first_active).id;
-          
-          // Single pass: track previous timer and last active
-          for (const auto &timer : timers) {
-            if (!timer.is_active) continue;
-            active_count++;
-            
-            if (timer.id == id(timer_first_active).id) {
-              // Found current timer - use previous if available, else wrap to last_active
-              if (prev_timer != nullptr) {
-                last_active = prev_timer;
-              }
-              break;
-            }
-            
-            // Keep track of last active timer seen so far
-            prev_timer = (esphome::voice_assistant::Timer *)&timer;
-            last_active = prev_timer;
-          }
-          
-          // If no previous timer was set (at first), last_active is already the last timer
-          if (last_active == nullptr) {
-            // Current timer is first, find the actual last active
-            for (const auto &timer : timers) {
-              if (timer.is_active) {
-                last_active = (esphome::voice_assistant::Timer *)&timer;
-              }
-            }
-          }
-          
-          if (last_active != nullptr) {
-            id(timer_first_active) = *last_active;
-            id(timer_active_name) = last_active->name;
-            ESP_LOGI("timer", "[NAVIGATE_PREV] SUCCESS: old_id=%s -> new_id=%s (name=%s, remaining=%u sec, active_count=%d)", 
-                     old_id.c_str(), last_active->id.c_str(), last_active->name.c_str(), last_active->seconds_left, active_count);
-          } else {
-            ESP_LOGW("timer", "[NAVIGATE_PREV] FAILED: could not find previous timer");
-          }
+      # Delegate to centralized state machine
+      - script.execute:
+          id: timer_set_current_selection
+          mode: "navigate_prev"
       - script.execute: timer_update_display
 
   - id: timer_update_display
