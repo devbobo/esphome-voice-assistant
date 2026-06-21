@@ -21,13 +21,6 @@ packages:
 ## Wake word detection and voice command processing
 ################################################################################
 
-binary_sensor:
-  - platform: template
-    id: timer_is_active_ha
-    name: "Timer Active"
-    lambda: |-
-      return id(timer_has_active);
-
 sensor:
   - platform: template
     id: timer_remaining_seconds
