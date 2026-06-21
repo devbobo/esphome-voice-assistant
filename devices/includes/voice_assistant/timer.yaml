@@ -108,13 +108,12 @@ script:
             ESP_LOGD("timer", "[TICK_UPDATE] Display updated: %s", buf);
           }
           
-          // Update progress arc showing elapsed percentage (0-360 degrees)
+          // Update progress arc showing remaining time (shrinks as time passes)
           auto arc = (lv_obj_t *)id(ui_timer_arc);
           if (arc != nullptr) {
-            uint32_t elapsed_sec = (total_sec > remaining_sec) ? (total_sec - remaining_sec) : 0;
-            uint16_t end_angle = (elapsed_sec * 360) / (total_sec > 0 ? total_sec : 1);
+            uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
             lv_arc_set_end_angle(arc, end_angle);
-            ESP_LOGD("timer", "[TICK_UPDATE] Arc updated: angle=%u deg, elapsed=%u sec, total=%u sec", end_angle, elapsed_sec, total_sec);
+            ESP_LOGD("timer", "[TICK_UPDATE] Arc updated: angle=%u deg, remaining=%u sec, total=%u sec", end_angle, remaining_sec, total_sec);
           }
 
   - id: timer_fetch_first_active
@@ -376,11 +375,10 @@ script:
             lv_label_set_text(label_name, timer_name.empty() ? "Timer" : timer_name.c_str());
           }
           
-          // Update progress arc showing elapsed percentage (0-360 degrees)
+          // Update progress arc showing remaining time (shrinks as time passes)
           auto arc = (lv_obj_t *)id(ui_timer_arc);
           if (arc != nullptr) {
-            uint32_t elapsed_sec = (total_sec > remaining_sec) ? (total_sec - remaining_sec) : 0;
-            uint16_t end_angle = (elapsed_sec * 360) / (total_sec > 0 ? total_sec : 1);
+            uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
             lv_arc_set_end_angle(arc, end_angle);
           }
 
