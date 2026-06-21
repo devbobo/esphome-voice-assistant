@@ -74,7 +74,7 @@ voice_assistant:
         event_type: ${evt_va_start}
 
   on_wake_word_detected:
-    - logger.log: "Wake word detected (micro_wake_word)"
+    - logger.log: "Wake word detected (voice_assistant)"
     - event.trigger:
         id: system_event
         event_type: ${evt_va_wake_word_detected}

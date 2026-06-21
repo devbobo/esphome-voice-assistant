@@ -410,17 +410,23 @@ script:
   - id: timer_render_countdown
     then:
       - logger.log: "Rendering timer countdown"
-      - lambda: |-
-          id(timer_check_has_active).execute();
-          if (!id(timer_has_active)) {
-            ESP_LOGW("timer", "Countdown render called but no active timer");
-            return;
-          }
-          id(timer_fetch_first_active).execute();
-          const uint32_t remaining_sec = id(timer_first_active).seconds_left;
-          const uint32_t remaining_min = remaining_sec / 60;
-          const uint32_t remaining_s = remaining_sec % 60;
-          ESP_LOGI("timer", "Display: %u:%02u remaining (primary timer)", remaining_min, remaining_s);
+      - script.execute: timer_check_has_active
+      - script.wait: timer_check_has_active
+      - if:
+          condition:
+            lambda: 'return id(timer_has_active);'
+          then:
+            - script.execute: timer_fetch_first_active
+            - script.wait: timer_set_current_selection
+            - lambda: |-
+                const uint32_t remaining_sec = id(timer_first_active).seconds_left;
+                const uint32_t remaining_min = remaining_sec / 60;
+                const uint32_t remaining_s = remaining_sec % 60;
+                ESP_LOGI("timer", "Display: %u:%02u remaining (primary timer)", remaining_min, remaining_s);
+          else:
+            - logger.log:
+                level: WARN
+                format: "[RENDER_COUNTDOWN] No active timer to render"
 
   - id: timer_render_expired
     then:

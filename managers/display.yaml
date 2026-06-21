@@ -80,7 +80,7 @@ script:
 
           // Preserve timer view when timer is active or ringing
           // Prevents UI from bouncing away during active timer or alarm
-          if ((id(timer_has_active) || id(timer_ringing)) && id(dm_current_view).find("module_timer:") == 0) {
+          if ((id(timer_has_active) || id(timer_ringing).state) && id(dm_current_view).find("module_timer:") == 0) {
             ESP_LOGD("display", "Preserving timer view: %s", id(dm_current_view).c_str());
             return;
           }
@@ -136,6 +136,9 @@ script:
                   - lambda: |-
                       id(dm_detail_mode) = false;
                       id(dm_page_index) = (id(dm_page_index) + 1) % 2;
+                      id(dm_current_view) = (id(dm_page_index) == 1)
+                        ? "module_timer:menu"
+                        : ("page_0_" + id(dm_assistant_state));
                       if (id(dm_page_index) == 1) {
                         id(dm_timers_in_list_view) = false;
                       }
@@ -159,6 +162,9 @@ script:
                   - lambda: |-
                       id(dm_detail_mode) = false;
                       id(dm_page_index) = (id(dm_page_index) + 1) % 2;
+                      id(dm_current_view) = (id(dm_page_index) == 1)
+                        ? "module_timer:menu"
+                        : ("page_0_" + id(dm_assistant_state));
                       if (id(dm_page_index) == 1) {
                         id(dm_timers_in_list_view) = false;
                       }
@@ -181,6 +187,7 @@ script:
                   - logger.log: "Tap on timers menu"
                   - lambda: id(dm_timers_in_list_view) = true;
                   - script.execute: timer_check_has_any
+                  - script.wait: timer_check_has_any
                   - if:
                       condition:
                         lambda: 'return id(timer_has_any);'
