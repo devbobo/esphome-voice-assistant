@@ -429,13 +429,15 @@ script:
           
           if (label_duration != nullptr && arc != nullptr) {
             auto total_sec = id(timer_first_active).total_seconds;
+            auto total_min = total_sec / 60;
             char duration_str[16];
-            if (total_sec < 3600) {
+            if (total_sec < 60) {
               snprintf(duration_str, sizeof(duration_str), "%u SEC.", total_sec);
+            } else if (total_min < 60) {
+              snprintf(duration_str, sizeof(duration_str), "%u MIN.", total_min);
             } else {
-              auto minutes = total_sec / 60;
-              auto hours = minutes / 60;
-              snprintf(duration_str, sizeof(duration_str), "%u:%02u HR.", hours, minutes % 60);
+              auto hours = total_min / 60;
+              snprintf(duration_str, sizeof(duration_str), "%u:%02u HR.", hours, total_min % 60);
             }
             lv_label_set_text(label_duration, duration_str);
             // Show arc at 0 degrees (timer just expired)
@@ -470,7 +472,8 @@ script:
           then:
             # Guard: only queue if switch still on (prevents accumulation after stop)
             - script.execute: timer_queue_alarm_if_active
-            # Wait for sound to finish
+            # Wait synchronously for sound to finish (prevents queue buildup)
+            - script.wait: audio_queue_sound
             - wait_until:
                 condition:
                   not:

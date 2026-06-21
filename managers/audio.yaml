@@ -114,16 +114,31 @@ script:
             - lambda: id(api_connect_flow_completed) = false;
             - logger.log: "Audio: API disconnected - reset connect flow state"
 
-      # Timer started: queue timer_started sound
+      # Timer started: queue timer_started sound (guard I2S bus on shared hardware)
       - if:
           condition:
             lambda: 'return event_type == "${evt_va_timer_started}";'
           then:
             - logger.log: "Audio: Timer started - queuing sound"
-            - script.execute:
-                id: play_sound
-                priority: false
-                sound_file: !lambda return id(timer_started_sound);
+            - if:
+                condition:
+                  lambda: 'return std::string("${i2s_shared_bus}") == "true";'
+                then:
+                  # Shared I2S bus: stop mic, play, wait, restart listen
+                  - script.execute: microphone_stop_listening
+                  - script.wait: microphone_stop_listening
+                  - script.execute:
+                      id: play_sound
+                      priority: true
+                      sound_file: !lambda return id(timer_started_sound);
+                  - script.wait: play_sound
+                  - voice_assistant.start:
+                else:
+                  # Separate buses: play sound without stopping mic
+                  - script.execute:
+                      id: play_sound
+                      priority: false
+                      sound_file: !lambda return id(timer_started_sound);
 
       # Timer finished: play looping alarm
       - if:

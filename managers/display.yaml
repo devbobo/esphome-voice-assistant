@@ -72,7 +72,8 @@ script:
 
           id(dm_show_startup) = false;
 
-          // Preserve timer view when timer is active
+          // Preserve timer view when timer is active (refresh state first)
+          id(timer_check_has_active).execute();
           if (id(timer_has_active) && id(dm_current_view).find("module_timer:") == 0) {
             ESP_LOGD("display", "Preserving timer view: %s", id(dm_current_view).c_str());
             return;
@@ -213,6 +214,7 @@ script:
           then:
             - logger.log: "Display: Timer cancelled"
             - script.execute: timer_check_has_active
+            - script.wait: timer_check_has_active
             - if:
                 condition:
                   lambda: 'return id(timer_has_active);'

@@ -133,9 +133,7 @@ voice_assistant:
     # Voice intent routing for modules
     - lambda: |-
         ESP_LOGD("voice", "Voice assistant cycle complete");
-    - event.trigger:
-        id: system_event
-        event_type: ${evt_va_idle}
+    # Note: evt_va_idle is published in on_idle; avoid duplicate here
 
   on_client_connected:
     - logger.log: "Voice assistant client connected"
@@ -232,9 +230,14 @@ switch:
           id: system_event
           event_type: ${evt_mic_muted}
     on_turn_on:
+      # Stop microphone first to avoid I2S bus contention, then play feedback
+      - microphone.stop_capture:
+          id: va_microphone
       - script.execute:
-          id: audio_queue_sound
-          sound_key: "mute_off"
+          id: play_sound
+          priority: true
+          sound_file: !lambda return id(mute_off_sound);
+      - script.wait: play_sound
       - event.trigger:
           id: system_event
           event_type: ${evt_mic_unmuted}

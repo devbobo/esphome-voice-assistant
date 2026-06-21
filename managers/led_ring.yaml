@@ -181,6 +181,7 @@ script:
             lambda: 'return timer_event == "${evt_va_timer_cancelled}";'
           then:
             - script.execute: timer_check_has_active
+            - script.wait: timer_check_has_active
             - if:
                 condition:
                   lambda: 'return !id(timer_has_active);'
