@@ -136,16 +136,16 @@ script:
                   - lambda: |-
                       id(dm_detail_mode) = false;
                       id(dm_page_index) = (id(dm_page_index) + 1) % 2;
-                  - script.execute: display_manager_recompute_view
+                      if (id(dm_page_index) == 1) {
+                        id(dm_timers_in_list_view) = false;
+                      }
                   - if:
                       condition:
-                        lambda: 'return id(dm_current_view) == "module_timer:menu";'
+                        lambda: 'return id(dm_page_index) == 1;'
                       then:
                         - lvgl.page.show: timers_menu
-                        - lambda: id(dm_timers_in_list_view) = false;
                       else:
                         - lvgl.page.show: main_page
-                  - script.execute: display_manager_render
       - if:
           condition:
             lambda: 'return touchscreen_event == "${touchscreen_swipe_right}";'
@@ -159,16 +159,16 @@ script:
                   - lambda: |-
                       id(dm_detail_mode) = false;
                       id(dm_page_index) = (id(dm_page_index) + 1) % 2;
-                  - script.execute: display_manager_recompute_view
+                      if (id(dm_page_index) == 1) {
+                        id(dm_timers_in_list_view) = false;
+                      }
                   - if:
                       condition:
-                        lambda: 'return id(dm_current_view) == "module_timer:menu";'
+                        lambda: 'return id(dm_page_index) == 1;'
                       then:
                         - lvgl.page.show: timers_menu
-                        - lambda: id(dm_timers_in_list_view) = false;
                       else:
                         - lvgl.page.show: main_page
-                  - script.execute: display_manager_render
       - if:
           condition:
             lambda: 'return touchscreen_event == "${touchscreen_single_press}";'
