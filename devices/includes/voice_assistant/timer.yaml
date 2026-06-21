@@ -233,6 +233,26 @@ script:
           }
 
   ################################################################################
+  ## Helper: Apply Timer Selection (update all state globals)
+  ## Used by next/prev navigation to avoid duplication
+  ################################################################################
+  - id: timer_apply_selection
+    parameters:
+      direction: string
+    then:
+      - lambda: |-
+          // direction: "next" or "prev" (for logging)
+          // timer_first_active must be pre-set by caller with desired timer
+          id(timer_active_id) = id(timer_first_active).id;
+          id(timer_active_name) = id(timer_first_active).name;
+          id(timer_seconds_remaining) = id(timer_first_active).seconds_left;
+          ESP_LOGI("timer", "[SELECT_%s] Selected: id=%s, name=%s, remaining=%u sec", 
+                   direction.c_str(), 
+                   id(timer_first_active).id.c_str(), 
+                   id(timer_first_active).name.c_str(), 
+                   id(timer_first_active).seconds_left);
+
+  ################################################################################
   ## Helper: Navigate to Next Active Timer (cycle forward)
   ################################################################################
   - id: timer_select_next_active
@@ -263,15 +283,10 @@ script:
           }
           
           // Wrap to first if no next timer found
-          esphome::voice_assistant::Timer result_timer = next_timer.id.empty() ? first_active : next_timer;
-          if (!result_timer.id.empty()) {
-            id(timer_first_active) = result_timer;
-            id(timer_active_id) = result_timer.id;
-            id(timer_active_name) = result_timer.name;
-            id(timer_seconds_remaining) = result_timer.seconds_left;
-            ESP_LOGI("timer", "[SELECT_NEXT] Selected: id=%s, name=%s, remaining=%u sec", 
-                     result_timer.id.c_str(), result_timer.name.c_str(), result_timer.seconds_left);
-          }
+          id(timer_first_active) = next_timer.id.empty() ? first_active : next_timer;
+      - script.execute:
+          id: timer_apply_selection
+          direction: "NEXT"
 
   ################################################################################
   ## Helper: Navigate to Previous Active Timer (cycle backward)
@@ -311,14 +326,13 @@ script:
             }
           }
           
+          // Apply the selection (update globals)
           if (!last_active.id.empty()) {
             id(timer_first_active) = last_active;
-            id(timer_active_id) = last_active.id;
-            id(timer_active_name) = last_active.name;
-            id(timer_seconds_remaining) = last_active.seconds_left;
-            ESP_LOGI("timer", "[SELECT_PREV] Selected: id=%s, name=%s, remaining=%u sec", 
-                     last_active.id.c_str(), last_active.name.c_str(), last_active.seconds_left);
           }
+      - script.execute:
+          id: timer_apply_selection
+          direction: "PREV"
 
   ################################################################################
   ## Timer Selection State Machine (Deprecated - kept for backward compatibility)
@@ -666,70 +680,6 @@ script:
       - media_player.stop:
           id: va_media_player
       - script.execute: audio_stop_sound
-
-binary_sensor:
-  - platform: template
-    id: timer_is_active_ha
-    name: "Timer Active"
-    lambda: |-
-      // Compute active state directly from timers API (no side effects, always current)
-      for (const auto &timer : id(va).get_timers()) {
-        if (timer.is_active) return true;
-      }
-      return false;
-
-sensor:
-  - platform: template
-    id: timer_remaining_seconds
-    name: "Timer Remaining"
-    unit_of_measurement: "s"
-    accuracy_decimals: 0
-    update_interval: 1s
-    lambda: |-
-      // Compute remaining seconds directly from timers API to avoid stale cache
-      const auto &timers = id(va).get_timers();
-      if (timers.empty()) {
-        return 0.0f;
-      }
-      
-      // Prefer currently selected timer (if it exists in live list)
-      if (!id(timer_first_active).id.empty()) {
-        for (const auto &timer : timers) {
-          if (timer.id == id(timer_first_active).id && timer.is_active) {
-            return (float)timer.seconds_left;
-          }
-        }
-      }
-      
-      // Fall back to first active timer if selected one not found
-      for (const auto &timer : timers) {
-        if (timer.is_active) {
-          return (float)timer.seconds_left;
-        }
-      }
-      return 0.0f;
-
-  - platform: template
-    id: timer_count_all
-    name: "Total Timers"
-    unit_of_measurement: "timers"
-    accuracy_decimals: 0
-    update_interval: 1s
-    lambda: |-
-      return (float)id(va).get_timers().size();
-
-  - platform: template
-    id: timer_count_active
-    name: "Active Timers"
-    unit_of_measurement: "timers"
-    accuracy_decimals: 0
-    update_interval: 1s
-    lambda: |-
-      int count = 0;
-      for (const auto &timer : id(va).get_timers()) {
-        if (timer.is_active) count++;
-      }
-      return (float)count;
 
 text_sensor:
   - platform: template
