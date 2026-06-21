@@ -256,7 +256,8 @@ script:
       ##   → Extract module "timer", page "countdown"
       ##   → Call timer_render_countdown()
       ########################################################################
-      # Module display page routing is handled via on_timer_tick in common.yaml
+      # Timer events are routed via display_manager_handle_timer_event script
+      # which responds to all timer events and updates display accordingly
 
 interval:
   - interval: 250ms

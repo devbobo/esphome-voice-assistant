@@ -155,6 +155,16 @@ script:
     parameters:
       timer_event: string
     then:
+      # Timer started: show processing state
+      - if:
+          condition:
+            lambda: 'return timer_event == "${evt_va_timer_started}";'
+          then:
+            - logger.log: "LED Ring: Timer started - showing processing state"
+            - event.trigger:
+                id: led_event
+                event_type: "${led_event_processing}"
+
       # Timer finished: show timer_done LED state
       - if:
           condition:

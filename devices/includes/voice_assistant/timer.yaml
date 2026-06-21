@@ -108,12 +108,13 @@ script:
             ESP_LOGD("timer", "[TICK_UPDATE] Display updated: %s", buf);
           }
           
-          // Update progress arc with fresh remaining time
+          // Update progress arc showing elapsed percentage (0-360 degrees)
           auto arc = (lv_obj_t *)id(ui_timer_arc);
           if (arc != nullptr) {
-            uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
+            uint32_t elapsed_sec = (total_sec > remaining_sec) ? (total_sec - remaining_sec) : 0;
+            uint16_t end_angle = (elapsed_sec * 360) / (total_sec > 0 ? total_sec : 1);
             lv_arc_set_end_angle(arc, end_angle);
-            ESP_LOGD("timer", "[TICK_UPDATE] Arc updated: angle=%u deg, remaining=%u sec, total=%u sec", end_angle, remaining_sec, total_sec);
+            ESP_LOGD("timer", "[TICK_UPDATE] Arc updated: angle=%u deg, elapsed=%u sec, total=%u sec", end_angle, elapsed_sec, total_sec);
           }
 
   - id: timer_fetch_first_active
@@ -207,7 +208,7 @@ script:
             }
           }
           
-          // Mode: newest_active - timer with maximum remaining time (just created)
+          // Mode: newest_active - timer with maximum remaining time (longest running)
           else if (mode == "newest_active") {
             esphome::voice_assistant::Timer newest_timer{};
             newest_timer.id = "";
@@ -375,10 +376,11 @@ script:
             lv_label_set_text(label_name, timer_name.empty() ? "Timer" : timer_name.c_str());
           }
           
-          // Update progress arc (0-360 degrees)
+          // Update progress arc showing elapsed percentage (0-360 degrees)
           auto arc = (lv_obj_t *)id(ui_timer_arc);
           if (arc != nullptr) {
-            uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
+            uint32_t elapsed_sec = (total_sec > remaining_sec) ? (total_sec - remaining_sec) : 0;
+            uint16_t end_angle = (elapsed_sec * 360) / (total_sec > 0 ? total_sec : 1);
             lv_arc_set_end_angle(arc, end_angle);
           }
 
@@ -468,6 +470,7 @@ binary_sensor:
     id: timer_is_active_ha
     name: "Timer Active"
     lambda: |-
+      id(timer_check_has_active).execute();
       return id(timer_has_active);
 
 sensor:
@@ -480,11 +483,14 @@ sensor:
     lambda: |-
       id(timer_check_has_active).execute();
       if (id(timer_has_active)) {
-        // Read from currently selected timer (set by navigation/events), DON'T refetch
+        // If no timer selected yet, select the first active one for consistency
         if (id(timer_first_active).id.empty()) {
-          return 0.0f;
+          id(timer_fetch_first_active).execute();
         }
-        return (float)id(timer_first_active).seconds_left;
+        // Return remaining time from currently selected timer
+        if (!id(timer_first_active).id.empty()) {
+          return (float)id(timer_first_active).seconds_left;
+        }
       }
       return 0.0f;
 

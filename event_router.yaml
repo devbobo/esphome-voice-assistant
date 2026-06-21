@@ -240,8 +240,7 @@ event:
       - if:
           condition:
             lambda: >-
-              return std::set<std::string>{
-                "${evt_va_timer_finished}",
+              return std::set<std::string>{                "${evt_va_timer_started}",                "${evt_va_timer_finished}",
                 "${evt_va_timer_cancelled}",
               }.count(event_type) > 0;
           then:
