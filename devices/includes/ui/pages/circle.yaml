@@ -141,3 +141,52 @@
         text_align: CENTER
         align: CENTER
         text_color: ${color_light_gray}
+
+- id: timers_menu
+  bg_color: ${color_black}
+  widgets:
+    # Timer logo/icon (placeholder square)
+    - obj:
+        id: ui_timers_logo
+        x: 90
+        y: 60
+        width: 80
+        height: 80
+        radius: 8
+        bg_color: ${color_orange}
+        border_width: 0
+    # "Timers" title
+    - label:
+        id: ui_timers_title
+        x: 0
+        y: 150
+        width: 260
+        height: 50
+        text: "Timers"
+        text_font: nunito_24
+        text_align: CENTER
+        align: CENTER
+        text_color: ${color_white}
+    # Tap instruction
+    - label:
+        id: ui_timers_tap
+        x: 0
+        y: 220
+        width: 260
+        height: 30
+        text: "Tap to view timers"
+        text_font: nunito_24
+        text_align: CENTER
+        align: CENTER
+        text_color: ${color_light_gray}
+    # Tap target (invisible, full screen)
+    - obj:
+        id: ui_timers_tap_target
+        x: 0
+        y: 0
+        width: 260
+        height: 260
+        radius: 0
+        bg_color: 0x000000
+        bg_opa: 0%
+        border_width: 0
