@@ -194,7 +194,7 @@ script:
                       then:
                         # Timers exist: show first active timer
                         - script.execute: timer_fetch_first_active
-                        - script.wait: timer_set_current_selection
+                        - script.wait: timer_fetch_first_active
                         - lambda: id(dm_current_view) = "module_timer:countdown";
                         - lvgl.page.show: timer_page
                         - script.execute: timer_update_display
@@ -247,7 +247,7 @@ script:
             - logger.log: "Display: Timer started"
             - lambda: id(dm_timers_in_list_view) = true;
             - script.execute: timer_fetch_newest_active
-            - script.wait: timer_set_current_selection
+            - script.wait: timer_fetch_newest_active
             - lambda: id(dm_current_view) = "module_timer:countdown";
             - lvgl.page.show: timer_page
             - script.execute: timer_update_display
@@ -301,7 +301,7 @@ script:
                       then:
                         # More timers active: select the next one
                         - script.execute: timer_fetch_first_active
-                        - script.wait: timer_set_current_selection
+                        - script.wait: timer_fetch_first_active
                         - lambda: id(dm_current_view) = "module_timer:countdown";
                         - lvgl.page.show: timer_page
                         - script.execute: timer_update_display
