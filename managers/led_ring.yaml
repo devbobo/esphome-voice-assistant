@@ -176,6 +176,10 @@ script:
                 event_type: "${led_event_timer_done}"
 
       # Timer cancelled with no timers active: return to idle
+      # NOTE: We explicitly force idle (not canonical state) when timer ends because:
+      # (1) Canonical interaction state may include timer info; resetting to idle clears timer-specific LED
+      # (2) Interaction manager will re-publish canonical state if needed, which will override idle
+      # (3) This ensures LED reflects "no active timer" state immediately, not residual muted/error state
       - if:
           condition:
             lambda: 'return timer_event == "${evt_va_timer_cancelled}";'

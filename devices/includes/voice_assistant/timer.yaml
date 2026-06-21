@@ -459,6 +459,10 @@ script:
       - logger.log: "Timer alarm: Starting looping playback"
       - switch.turn_on: timer_ringing
       # On shared I2S hardware: stop wake word mic to avoid bus contention with alarm playback
+      # NOTE: We do NOT re-arm wake word after alarm completes - that is Voice State Manager's
+      # responsibility via canonical interaction state. Unconditionally re-arming here would
+      # conflict with VSM's authority over wake-word lifecycle (e.g., device may be intentionally
+      # muted or in non-listening mode). Let VSM restore listening based on canonical state.
       - if:
           condition:
             lambda: 'return std::string("${i2s_shared_bus}") == "true";'
@@ -579,6 +583,10 @@ button:
 voice_assistant:
   on_timer_started:
     # Publish core event - display/audio/LED managers subscribe and handle orchestration
+    # NOTE: We publish only event_type without caching timer context into globals.
+    # Rationale: Managers can query id(va).get_timers() directly when handling events.
+    # Caching timer context is complex, introduces race conditions, and doesn't scale
+    # well when events fire faster than globals are read. Query API instead.
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_started}"
@@ -597,12 +605,14 @@ voice_assistant:
 
   on_timer_finished:
     # Publish event - display/audio/LED managers subscribe and handle orchestration
+    # NOTE: Same as on_timer_started - managers read timer state from API on demand.
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_finished}"
 
   on_timer_cancelled:
     # Publish event - display/audio/LED managers subscribe and handle orchestration
+    # NOTE: Same as on_timer_started - managers read timer state from API on demand.
     - event.trigger:
         id: system_event
         event_type: "${evt_va_timer_cancelled}"

@@ -133,7 +133,8 @@ script:
                       sound_file: !lambda return id(timer_started_sound);
                   - script.wait: play_sound
                   # Note: Do NOT resume voice assistant here; Voice State Manager
-                  # controls wake-word/assistant lifecycle based on canonical state
+                  # controls wake-word/assistant lifecycle based on canonical state.
+                  # Unconditionally re-arming would break muted/idle state tracking.
                 else:
                   # Separate buses: play sound without stopping mic
                   - script.execute:
