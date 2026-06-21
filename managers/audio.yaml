@@ -132,7 +132,8 @@ script:
                       priority: true
                       sound_file: !lambda return id(timer_started_sound);
                   - script.wait: play_sound
-                  - voice_assistant.start:
+                  # Note: Do NOT resume voice assistant here; Voice State Manager
+                  # controls wake-word/assistant lifecycle based on canonical state
                 else:
                   # Separate buses: play sound without stopping mic
                   - script.execute:

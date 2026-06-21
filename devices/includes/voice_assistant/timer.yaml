@@ -84,7 +84,7 @@ script:
           
           // Update the cached copy with fresh remaining time
           id(timer_first_active).seconds_left = fresh_seconds_left;
-          ESP_LOGI("timer", "[TICK_UPDATE] SUCCESS: id=%s, name=%s, fresh_remaining=%u sec", current_id.c_str(), id(timer_first_active).name.c_str(), fresh_seconds_left);
+          ESP_LOGD("timer", "[TICK_UPDATE] SUCCESS: id=%s, name=%s, fresh_remaining=%u sec", current_id.c_str(), id(timer_first_active).name.c_str(), fresh_seconds_left);
           
           // Now update display with fresh remaining time
           auto total_sec = id(timer_first_active).total_seconds;
@@ -551,9 +551,9 @@ text_sensor:
 button:
   - platform: template
     id: timer_button_cancel
-    name: "Cancel Timer"
+    name: "Stop Timer"
     on_press:
-      - logger.log: "Cancel timer button pressed"
+      - logger.log: "Stop alarm button pressed"
       - script.execute: timer_stop_looping_alarm
       - voice_assistant.stop:
 

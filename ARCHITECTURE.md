@@ -188,7 +188,7 @@ Central timer state management and event handling:
 
 On hardware with shared I2S microphone/speaker bus (e.g., EchoEar):
 - Timer-start sound: Stops microphone before playback via `microphone_stop_listening` guard
-- Alarm playback: Stops microphone before alarm loop via conditional script `microphone_stop_capture_if_shared_bus`
+- Alarm playback: Uses `timer_play_looping_alarm` which guards via `microphone_stop_listening` (conditionally on shared bus)
 - Prevents "Parent bus is busy" errors during simultaneous capture and playback attempts
 
 ## Voice Assistant Architecture

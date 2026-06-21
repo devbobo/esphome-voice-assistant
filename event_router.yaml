@@ -32,8 +32,7 @@
 ##   - voice_assist_intent_start:    Intent processing started
 ##   - voice_assist_intent_progress: Intent streaming
 ##   - voice_assist_intent_end:      Intent processing complete
-##   - voice_assist_thinking:        Processing STT/intent (generic)
-##   - voice_assist_replying:        TTS started (response being generated)
+##   - voice_assist_tts_start:       Text-to-speech started (response being generated)
 ##   - voice_assist_tts_end:         Text-to-speech complete
 ##   - voice_assist_idle:        Voice assistant session ended (on_end fired)
 ##   - voice_assist_error:       Voice assistant encountered an error

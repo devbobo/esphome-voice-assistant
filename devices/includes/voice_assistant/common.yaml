@@ -35,6 +35,7 @@ micro_wake_word:
             return std::string("${i2s_shared_bus}") == "true";
         then:
           - script.execute: microphone_stop_listening
+          - script.wait: microphone_stop_listening
     # Publish wake word detected event (avoid duplicating micro_wake_word.on_wake_word_detected)
     - event.trigger:
         id: system_event
