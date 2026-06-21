@@ -123,14 +123,22 @@ script:
     then:
       - lambda: |-
           const auto &timers = id(va).get_timers();
-          if (timers.empty()) return;
-          auto output_timer = *timers.begin();
+          esphome::voice_assistant::Timer output_timer{};
+          output_timer.id = "";
+          bool found_active = false;
           for (const auto &timer : timers) {
-            if (timer.is_active && timer.seconds_left <= output_timer.seconds_left) {
-              output_timer = timer;
+            if (timer.is_active) {
+              if (!found_active || timer.seconds_left <= output_timer.seconds_left) {
+                output_timer = timer;
+                found_active = true;
+              }
             }
           }
-          id(timer_first_active) = output_timer;
+          if (found_active) {
+            id(timer_first_active) = output_timer;
+            ESP_LOGI("timer", "[FETCH_FIRST] Selected timer: id=%s, name=%s, total=%u sec, remaining=%u sec", 
+                     output_timer.id.c_str(), output_timer.name.c_str(), output_timer.total_seconds, output_timer.seconds_left);
+          }
 
   - id: timer_fetch_newest_active
     then:
