@@ -495,8 +495,11 @@ binary_sensor:
     id: timer_is_active_ha
     name: "Timer Active"
     lambda: |-
-      id(timer_check_has_active).execute();
-      return id(timer_has_active);
+      // Compute active state directly from timers API (no side effects, always current)
+      for (const auto &timer : id(va).get_timers()) {
+        if (timer.is_active) return true;
+      }
+      return false;
 
 sensor:
   - platform: template
