@@ -174,14 +174,23 @@ script:
                 condition:
                   lambda: 'return id(dm_current_view) == "module_timer:menu" && !id(dm_timers_in_list_view);'
                 then:
-                  # Tap on timers menu: navigate to active timers list
-                  - logger.log: "Tap on timers menu - showing active timers"
+                  # Tap on timers menu: enter timer browsing context
+                  - logger.log: "Tap on timers menu"
                   - lambda: id(dm_timers_in_list_view) = true;
-                  - script.execute: timer_fetch_first_active
-                  - script.wait: timer_set_current_selection
-                  - lambda: id(dm_current_view) = "module_timer:countdown";
-                  - lvgl.page.show: timer_page
-                  - script.execute: timer_update_display
+                  - if:
+                      condition:
+                        lambda: 'return id(timer_has_any);'
+                      then:
+                        # Timers exist: show first active timer
+                        - script.execute: timer_fetch_first_active
+                        - script.wait: timer_set_current_selection
+                        - lambda: id(dm_current_view) = "module_timer:countdown";
+                        - lvgl.page.show: timer_page
+                        - script.execute: timer_update_display
+                      else:
+                        # No timers: show no_timers page
+                        - lambda: id(dm_current_view) = "module_timer:no_timers";
+                        - lvgl.page.show: no_timers_page
                 else:
                   - if:
                       condition:
@@ -282,14 +291,13 @@ script:
                   - lvgl.page.show: timer_page
                   - script.execute: timer_update_display
                 else:
-                  # No timers active: show timers menu
+                  # No timers active: show no_timers page (sub-page of timer context)
                   - lambda: |-
                       id(timer_active_id) = "";
                       id(timer_active_name) = "";
                       id(timer_seconds_remaining) = 0;
-                      id(dm_timers_in_list_view) = false;
-                      id(dm_current_view) = "module_timer:menu";
-                  - lvgl.page.show: timers_menu
+                  - lambda: id(dm_current_view) = "module_timer:no_timers";
+                  - lvgl.page.show: no_timers_page
 
   - id: display_manager_render
     mode: restart
