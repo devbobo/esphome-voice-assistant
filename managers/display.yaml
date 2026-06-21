@@ -180,6 +180,7 @@ script:
                   # Tap on timers menu: enter timer browsing context
                   - logger.log: "Tap on timers menu"
                   - lambda: id(dm_timers_in_list_view) = true;
+                  - script.execute: timer_check_has_any
                   - if:
                       condition:
                         lambda: 'return id(timer_has_any);'
