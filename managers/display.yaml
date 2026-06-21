@@ -173,7 +173,7 @@ script:
           then:
             - logger.log: "Display: Timer started"
             - script.execute: timer_fetch_newest_active
-            - script.wait: timer_fetch_newest_active
+            - script.wait: timer_set_current_selection
             - lambda: id(dm_current_view) = "module_timer:countdown";
             - lvgl.page.show: timer_page
             - script.execute: timer_update_display
