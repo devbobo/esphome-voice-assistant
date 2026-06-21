@@ -17,6 +17,7 @@ This project uses sounds from the [Home Assistant Voice Preview Edition](https:/
 
 - Modular structure separating shared logic from device-specific hardware
 - Event-driven voice assistant behavior for cleaner feature composition
+- Native timer support with voice commands, display UI, audio feedback, and LED integration
 - Reusable include packages for voice assistant, media player, sounds, and touchscreen handlers
 - Internationalized labels and strings via substitutions
 
@@ -154,4 +155,8 @@ For architecture internals, event flows, manager responsibilities, and a detaile
 
 ## Status
 
-Production-ready for voice assistant, gesture detection, and battery monitoring. Additional display rendering and advanced timer UI integration are in progress.
+Production-ready for:
+- Voice assistant with wake-word detection
+- Native timer management (set, update, cancel, display, audio, LED feedback)
+- Gesture detection and touchscreen navigation
+- Battery monitoring (EchoEar)
