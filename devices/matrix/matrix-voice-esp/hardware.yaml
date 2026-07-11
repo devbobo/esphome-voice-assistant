@@ -45,6 +45,3 @@ matrixio:
   id: matrixio_dev
   cs_pin: GPIO23
 
-# Audio component required for microphone validation
-audio:
-  max_channels: 1

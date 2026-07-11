@@ -65,3 +65,4 @@ speaker:
     conf_matrixio_id: matrixio_dev
     audio_out: headphone
     volume: 80
+    num_channels: 2
