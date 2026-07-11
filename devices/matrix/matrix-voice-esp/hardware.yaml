@@ -44,3 +44,9 @@ spi:
 matrixio:
   id: matrixio_dev
   cs_pin: GPIO23
+
+# Audio component configuration
+# Required by microphone and media_player components
+audio:
+  sample_rate: 16000
+  channels: 1
