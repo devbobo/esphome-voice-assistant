@@ -154,14 +154,7 @@ script:
           }
 
           // Update timer label (only if display manager enabled)
-          if (std::string("${enable_display_manager}") == "true") {
-            auto label_timer = (lv_obj_t *)id(ui_timer_value);
-            if (label_timer != nullptr) {
-              lv_label_set_text(label_timer, buf);
-              ESP_LOGD("timer", "[FORMAT_TIME] Display updated: %s", buf);
-            }
-
-            // Update progress arc
+          if (id(display_manager_enabled)) {
             auto arc = (lv_obj_t *)id(ui_timer_arc);
             if (arc != nullptr) {
               uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
@@ -377,10 +370,7 @@ script:
   - id: timer_render_display
     then:
       - lambda: |-
-          if (std::string("${enable_display_manager}") != "true") {
-            ESP_LOGD("timer", "[RENDER_DISPLAY] Display manager disabled, skipping");
-            return;
-          }
+          if (!id(display_manager_enabled)) {
 
           auto total_sec = id(timer_first_active).total_seconds;
           auto remaining_sec = id(timer_first_active).seconds_left;
@@ -476,11 +466,7 @@ script:
     then:
       - logger.log: "Rendering timer expired"
       - lambda: |-
-          if (std::string("${enable_display_manager}") != "true") {
-            ESP_LOGD("timer", "[RENDER_EXPIRED] Display manager disabled, skipping");
-            return;
-          }
-
+          if (!id(display_manager_enabled)) {
           // Update expired timer page widgets with current timer info
           auto label_name = (lv_obj_t *)id(ui_expired_timer_name);
           auto label_duration = (lv_obj_t *)id(ui_expired_timer_duration);

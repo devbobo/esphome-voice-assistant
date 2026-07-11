@@ -272,4 +272,3 @@ packages:
   led_ring_manager: !include managers/led_ring.yaml
   touchscreen_manager: !include managers/touchscreen.yaml
   display_manager: !include managers/display.yaml
-

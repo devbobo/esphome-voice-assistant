@@ -11,6 +11,11 @@
 ################################################################################
 
 globals:
+  - id: display_manager_enabled
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
   - id: dm_current_view
     type: std::string
     restore_value: no
