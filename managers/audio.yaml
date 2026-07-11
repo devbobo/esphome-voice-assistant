@@ -214,7 +214,7 @@ script:
       - logger.log:
           format: "Audio: Queue sound '%s'"
           args: ["sound_key.c_str()"]
-      
+
       # Module sound routing
       # Modules call this script with sound_key (e.g., "timer_started", "timer_alarm")
       - if:
@@ -226,7 +226,7 @@ script:
                 priority: false
                 sound_file: !lambda return id(timer_started_sound);
             - script.wait: play_sound
-      
+
       - if:
           condition:
             lambda: 'return sound_key == "timer_alarm";'
@@ -236,7 +236,7 @@ script:
                 priority: true
                 sound_file: !lambda return id(timer_alarm_sound);
             - script.wait: play_sound
-      
+
       - if:
           condition:
             lambda: 'return sound_key == "mute_on";'
@@ -246,7 +246,7 @@ script:
                 priority: false
                 sound_file: !lambda return id(mute_on_sound);
             - script.wait: play_sound
-      
+
       - if:
           condition:
             lambda: 'return sound_key == "mute_off";'

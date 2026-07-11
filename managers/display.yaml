@@ -257,7 +257,6 @@ script:
             - script.wait: timer_fetch_newest_active
             - lambda: id(dm_current_view) = "module_timer:countdown";
             - lvgl.page.show: timer_page
-            - script.execute: timer_update_display
 
       # Timer updated: refresh display
       - if:
@@ -265,7 +264,6 @@ script:
             lambda: 'return timer_event == "${evt_va_timer_updated}";'
           then:
             - logger.log: "Display: Timer updated"
-            - script.execute: timer_update_display
 
       # Timer tick: update countdown if timer view active
       - if:
@@ -284,10 +282,8 @@ script:
             lambda: 'return timer_event == "${evt_va_timer_finished}";'
           then:
             - logger.log: "Display: Timer finished"
-            - script.execute: timer_update_display
             - lambda: id(dm_current_view) = "module_timer:expired";
             - lvgl.page.show: expired_timer_page
-            - script.execute: timer_render_expired
 
       # Timer cancelled: show next timer or idle page (only if user was browsing timers)
       - if:
@@ -311,7 +307,6 @@ script:
                         - script.wait: timer_fetch_first_active
                         - lambda: id(dm_current_view) = "module_timer:countdown";
                         - lvgl.page.show: timer_page
-                        - script.execute: timer_update_display
                       else:
                         # No timers active: show no_timers page (sub-page of timer context)
                         - lambda: |-
