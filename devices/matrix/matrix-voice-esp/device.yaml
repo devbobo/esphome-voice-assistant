@@ -1,0 +1,42 @@
+################################################################################
+## Matrix Voice ESP Device Configuration Orchestrator
+##
+## Bundles all device-specific modules for Matrix Voice (ESP32-based variant).
+## This file controls which hardware modules are loaded for the Matrix Voice device.
+##
+## Hardware Integration:
+## - Uses gnumpi's matrixio custom component for FPGA communication via Wishbone protocol
+## - Custom component abstracts 8-microphone array, speaker, and 18-LED ring control
+## - SPI bus communicates directly with FPGA (verified working configuration)
+##
+## Module Composition:
+##   - i18n: Device-specific display labels and internationalization strings
+##   - hardware: ESP32 base config, FPGA SPI bus, matrixio component initialization
+##   - io_entities: Logical abstractions (LED ring, microphone, speaker via matrixio)
+##   - led_ring: LED ring state manager for visual feedback (listening, muted, etc.)
+##   - media_player: Device-local media player wiring + shared media includes
+##   - voice_assistant: Device-local voice assistant wiring + shared VA includes
+##
+## Change the device package path in base.yaml to support different hardware.
+################################################################################
+
+## External Custom Component
+## Provides matrixio platform for LED, microphone, and speaker control via FPGA
+external_components:
+  - source: github://gnumpi/esphome_matrixio@main
+    components: [matrixio]
+
+## Feature Flags
+## Matrix Voice capabilities: audio coordination, LED ring feedback
+substitutions:
+  enable_audio_manager: "true"
+  enable_led_manager: "true"
+  enable_touchscreen_manager: "false"
+
+packages:
+  i18n: !include i18n.yaml
+  hardware: !include hardware.yaml
+  io_entities: !include io_entities.yaml
+  led_ring: !include led_ring.yaml
+  media_player: !include media_player.yaml
+  voice_assistant: !include voice_assistant.yaml

@@ -1,0 +1,46 @@
+################################################################################
+## Matrix Voice ESP Hardware Configuration
+##
+## Core ESP32 setup and FPGA communication interface.
+## The FPGA (via gnumpi's matrixio component) handles all I/O multiplexing:
+## - 8 MEMS microphones mixed to mono audio stream
+## - Speaker output to PAM8019 Class-D amplifier
+## - 18 RGBW addressable LED ring control
+##
+## Hardware Overview:
+##   - ESP-WROOM-32 module (ESP32 dual-core @ 240MHz, 4MB flash)
+##   - 8 MEMS microphones (MP34DB02) via FPGA
+##   - 3W Stereo Class-D Amplifier (PAM8019) with 3.5mm jack output
+##   - 18 RGBW LEDs (APA102-2020) controlled via FPGA
+##
+## FPGA Communication:
+##   Wishbone bus over SPI provides register access to control all FPGA resources
+##   Sample rates, volumes, and LED effects configured through FPGA registers
+################################################################################
+
+substitutions:
+  # Matrix Voice has FPGA-managed audio I/O multiplexing
+  # Mic and speaker can operate simultaneously via Wishbone protocol
+  i2s_shared_bus: "false"
+
+external_components:
+  - source:
+     type: git
+     url: https://github.com/gnumpi/esphome_matrixio
+     ref: main
+
+esp32:
+  board: esp32dev
+  variant: esp32s3
+  framework:
+    type: esp-idf
+    version: recommended
+
+spi:
+  clk_pin:  GPIO32
+  mosi_pin: GPIO33
+  miso_pin: GPIO21
+
+matrixio:
+  id: matrixio_dev
+  cs_pin: GPIO23
