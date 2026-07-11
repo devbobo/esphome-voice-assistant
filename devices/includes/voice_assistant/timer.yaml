@@ -57,17 +57,17 @@ script:
           // Find the currently viewed timer by ID and update its remaining_sec from the live timer list
           const auto &timers = id(va).get_timers();
           const std::string current_id = id(timer_first_active).id;
-          
+
           if (current_id.empty()) {
             ESP_LOGW("timer", "[TICK_UPDATE] FAILED: current timer ID is empty");
             return;
           }
-          
+
           // Find the timer with matching ID in the live list and copy fresh data
           uint32_t fresh_seconds_left = 0;
           bool found = false;
           int total_timers = 0;
-          
+
           for (const auto &timer : timers) {
             total_timers++;
             if (timer.id == current_id) {
@@ -76,12 +76,12 @@ script:
               break;
             }
           }
-          
+
           if (!found) {
             ESP_LOGW("timer", "[TICK_UPDATE] FAILED: Timer id=%s not found in live list (total_timers=%d)", current_id.c_str(), total_timers);
             return;
           }
-          
+
           // Update the cached copy with fresh remaining time
           id(timer_first_active).seconds_left = fresh_seconds_left;
           ESP_LOGD("timer", "[TICK_UPDATE] SUCCESS: id=%s, name=%s, fresh_remaining=%u sec", current_id.c_str(), id(timer_first_active).name.c_str(), fresh_seconds_left);
@@ -139,7 +139,7 @@ script:
           // Format timer_first_active remaining/total time and update UI
           auto total_sec = id(timer_first_active).total_seconds;
           auto remaining_sec = id(timer_first_active).seconds_left;
-          
+
           // Format time string
           char buf[16];
           if (total_sec >= 3600) {
@@ -152,20 +152,22 @@ script:
             uint16_t remaining_s = remaining_sec % 60;
             snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
           }
-          
-          // Update timer label
-          auto label_timer = (lv_obj_t *)id(ui_timer_value);
-          if (label_timer != nullptr) {
-            lv_label_set_text(label_timer, buf);
-            ESP_LOGD("timer", "[FORMAT_TIME] Display updated: %s", buf);
-          }
-          
-          // Update progress arc
-          auto arc = (lv_obj_t *)id(ui_timer_arc);
-          if (arc != nullptr) {
-            uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
-            lv_arc_set_end_angle(arc, end_angle);
-            ESP_LOGD("timer", "[FORMAT_TIME] Arc updated: angle=%u deg", end_angle);
+
+          // Update timer label (only if display manager enabled)
+          if (std::string("${enable_display_manager}") == "true") {
+            auto label_timer = (lv_obj_t *)id(ui_timer_value);
+            if (label_timer != nullptr) {
+              lv_label_set_text(label_timer, buf);
+              ESP_LOGD("timer", "[FORMAT_TIME] Display updated: %s", buf);
+            }
+
+            // Update progress arc
+            auto arc = (lv_obj_t *)id(ui_timer_arc);
+            if (arc != nullptr) {
+              uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
+              lv_arc_set_end_angle(arc, end_angle);
+              ESP_LOGD("timer", "[FORMAT_TIME] Arc updated: angle=%u deg", end_angle);
+            }
           }
 
   ################################################################################
@@ -179,7 +181,7 @@ script:
             ESP_LOGW("timer", "[SELECT_FIRST_ACTIVE] No timers available");
             return;
           }
-          
+
           esphome::voice_assistant::Timer output_timer{};
           output_timer.id = "";
           for (const auto &timer : timers) {
@@ -189,13 +191,13 @@ script:
               }
             }
           }
-          
+
           if (!output_timer.id.empty()) {
             id(timer_first_active) = output_timer;
             id(timer_active_id) = output_timer.id;
             id(timer_active_name) = output_timer.name;
             id(timer_seconds_remaining) = output_timer.seconds_left;
-            ESP_LOGI("timer", "[SELECT_FIRST_ACTIVE] Selected: id=%s, name=%s, remaining=%u sec", 
+            ESP_LOGI("timer", "[SELECT_FIRST_ACTIVE] Selected: id=%s, name=%s, remaining=%u sec",
                      output_timer.id.c_str(), output_timer.name.c_str(), output_timer.seconds_left);
           } else {
             ESP_LOGW("timer", "[SELECT_FIRST_ACTIVE] No active timers found");
@@ -212,7 +214,7 @@ script:
             ESP_LOGW("timer", "[SELECT_NEWEST_ACTIVE] No timers available");
             return;
           }
-          
+
           esphome::voice_assistant::Timer newest_timer{};
           newest_timer.id = "";
           for (const auto &timer : timers) {
@@ -220,13 +222,13 @@ script:
               newest_timer = timer;  // Always use last active timer encountered
             }
           }
-          
+
           if (!newest_timer.id.empty()) {
             id(timer_first_active) = newest_timer;
             id(timer_active_id) = newest_timer.id;
             id(timer_active_name) = newest_timer.name;
             id(timer_seconds_remaining) = newest_timer.seconds_left;
-            ESP_LOGI("timer", "[SELECT_NEWEST_ACTIVE] Selected: id=%s, name=%s, remaining=%u sec", 
+            ESP_LOGI("timer", "[SELECT_NEWEST_ACTIVE] Selected: id=%s, name=%s, remaining=%u sec",
                      newest_timer.id.c_str(), newest_timer.name.c_str(), newest_timer.seconds_left);
           } else {
             ESP_LOGW("timer", "[SELECT_NEWEST_ACTIVE] No active timers found");
@@ -246,10 +248,10 @@ script:
           id(timer_active_id) = id(timer_first_active).id;
           id(timer_active_name) = id(timer_first_active).name;
           id(timer_seconds_remaining) = id(timer_first_active).seconds_left;
-          ESP_LOGI("timer", "[SELECT_%s] Selected: id=%s, name=%s, remaining=%u sec", 
-                   direction.c_str(), 
-                   id(timer_first_active).id.c_str(), 
-                   id(timer_first_active).name.c_str(), 
+          ESP_LOGI("timer", "[SELECT_%s] Selected: id=%s, name=%s, remaining=%u sec",
+                   direction.c_str(),
+                   id(timer_first_active).id.c_str(),
+                   id(timer_first_active).name.c_str(),
                    id(timer_first_active).seconds_left);
 
   ################################################################################
@@ -263,13 +265,13 @@ script:
             ESP_LOGW("timer", "[SELECT_NEXT] No timers available");
             return;
           }
-          
+
           esphome::voice_assistant::Timer first_active{};
           esphome::voice_assistant::Timer next_timer{};
           first_active.id = "";
           next_timer.id = "";
           bool found_current = false;
-          
+
           for (const auto &timer : timers) {
             if (!timer.is_active) continue;
             if (first_active.id.empty()) first_active = timer;
@@ -281,7 +283,7 @@ script:
               found_current = true;
             }
           }
-          
+
           // Wrap to first if no next timer found
           id(timer_first_active) = next_timer.id.empty() ? first_active : next_timer;
       - script.execute:
@@ -299,12 +301,12 @@ script:
             ESP_LOGW("timer", "[SELECT_PREV] No timers available");
             return;
           }
-          
+
           esphome::voice_assistant::Timer prev_timer{};
           esphome::voice_assistant::Timer last_active{};
           prev_timer.id = "";
           last_active.id = "";
-          
+
           for (const auto &timer : timers) {
             if (!timer.is_active) continue;
             if (timer.id == id(timer_first_active).id) {
@@ -316,7 +318,7 @@ script:
             prev_timer = timer;
             last_active = prev_timer;
           }
-          
+
           // Wrap: find actual last active if not set
           if (last_active.id.empty()) {
             for (const auto &timer : timers) {
@@ -325,7 +327,7 @@ script:
               }
             }
           }
-          
+
           // Apply the selection (update globals)
           if (!last_active.id.empty()) {
             id(timer_first_active) = last_active;
@@ -359,10 +361,10 @@ script:
               break;
             }
           }
-          
+
           // Update the global for downstream consumers
           id(timer_has_active) = has_active;
-          
+
           if (has_active && !id(timer_first_active).id.empty()) {
             ESP_LOGD("timer", "[GET_CURRENT] VALID: id=%s, name=%s, remaining=%u sec",
                      id(timer_first_active).id.c_str(), id(timer_first_active).name.c_str(),
@@ -375,11 +377,16 @@ script:
   - id: timer_render_display
     then:
       - lambda: |-
+          if (std::string("${enable_display_manager}") != "true") {
+            ESP_LOGD("timer", "[RENDER_DISPLAY] Display manager disabled, skipping");
+            return;
+          }
+
           auto total_sec = id(timer_first_active).total_seconds;
           auto remaining_sec = id(timer_first_active).seconds_left;
           ESP_LOGD("timer", "[RENDER_DISPLAY] id=%s, total=%u sec, remaining=%u sec",
                    id(timer_first_active).id.c_str(), total_sec, remaining_sec);
-          
+
           // Update timer countdown (MM:SS or H:MM:SS format)
           auto label_timer = (lv_obj_t *)id(ui_timer_value);
           if (label_timer != nullptr) {
@@ -396,7 +403,7 @@ script:
             }
             lv_label_set_text(label_timer, buf);
           }
-          
+
           // Update total duration label (1 HR., 30 MINS., 45 SEC. etc)
           auto label_duration = (lv_obj_t *)id(ui_timer_duration);
           if (label_duration != nullptr) {
@@ -412,14 +419,14 @@ script:
             }
             lv_label_set_text(label_duration, buf_duration);
           }
-          
+
           // Update timer name
           auto label_name = (lv_obj_t *)id(ui_timer_name);
           if (label_name != nullptr) {
             const std::string& timer_name = id(timer_first_active).name;
             lv_label_set_text(label_name, timer_name.empty() ? "Timer" : timer_name.c_str());
           }
-          
+
           // Update progress arc showing remaining time (shrinks as time passes)
           auto arc = (lv_obj_t *)id(ui_timer_arc);
           if (arc != nullptr) {
@@ -469,16 +476,21 @@ script:
     then:
       - logger.log: "Rendering timer expired"
       - lambda: |-
+          if (std::string("${enable_display_manager}") != "true") {
+            ESP_LOGD("timer", "[RENDER_EXPIRED] Display manager disabled, skipping");
+            return;
+          }
+
           // Update expired timer page widgets with current timer info
           auto label_name = (lv_obj_t *)id(ui_expired_timer_name);
           auto label_duration = (lv_obj_t *)id(ui_expired_timer_duration);
           auto arc = (lv_obj_t *)id(ui_expired_timer_arc);
-          
+
           if (label_name != nullptr) {
             auto timer_name = id(timer_active_name);
             lv_label_set_text(label_name, timer_name.empty() ? "Timer" : timer_name.c_str());
           }
-          
+
           if (label_duration != nullptr && arc != nullptr) {
             auto total_sec = id(timer_first_active).total_seconds;
             auto total_min = total_sec / 60;
@@ -495,7 +507,7 @@ script:
             // Show arc at 0 degrees (timer just expired)
             lv_arc_set_end_angle(arc, 0);
           }
-          
+
           ESP_LOGI("timer", "Display: Timer Expired");
 
   - id: timer_queue_alarm_if_active
