@@ -133,35 +133,8 @@ script:
   ## Helper: Format Time Display
   ## Centralizes the MM:SS or H:MM:SS formatting logic to avoid duplication
   ################################################################################
-  - id: timer_format_time_display
-    then:
-      - lambda: |-
-          // Format timer_first_active remaining/total time and update UI
-          auto total_sec = id(timer_first_active).total_seconds;
-          auto remaining_sec = id(timer_first_active).seconds_left;
-
-          // Format time string
-          char buf[16];
-          if (total_sec >= 3600) {
-            uint16_t remaining_h = remaining_sec / 3600;
-            uint16_t remaining_min = (remaining_sec % 3600) / 60;
-            uint16_t remaining_s = remaining_sec % 60;
-            snprintf(buf, sizeof(buf), "%u:%02u:%02u", remaining_h, remaining_min, remaining_s);
-          } else {
-            uint16_t remaining_min = remaining_sec / 60;
-            uint16_t remaining_s = remaining_sec % 60;
-            snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
-          }
-
-          // Update timer label (only if display manager enabled)
-          if (id(display_manager_enabled)) {
-            auto arc = (lv_obj_t *)id(ui_timer_arc);
-            if (arc != nullptr) {
-              uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
-              lv_arc_set_end_angle(arc, end_angle);
-              ESP_LOGD("timer", "[FORMAT_TIME] Arc updated: angle=%u deg", end_angle);
-            }
-          }
+  # REMOVED: timer_format_time_display moved to display manager
+  # (Display rendering belongs in managers/display.yaml, not timer module)
 
   ################################################################################
   ## Helper: Find First Active Timer (soonest to expire)
@@ -367,62 +340,8 @@ script:
                      has_active, id(timer_first_active).id.empty());
           }
 
-  - id: timer_render_display
-    then:
-      - lambda: |-
-          if (!id(display_manager_enabled)) {
-
-          auto total_sec = id(timer_first_active).total_seconds;
-          auto remaining_sec = id(timer_first_active).seconds_left;
-          ESP_LOGD("timer", "[RENDER_DISPLAY] id=%s, total=%u sec, remaining=%u sec",
-                   id(timer_first_active).id.c_str(), total_sec, remaining_sec);
-
-          // Update timer countdown (MM:SS or H:MM:SS format)
-          auto label_timer = (lv_obj_t *)id(ui_timer_value);
-          if (label_timer != nullptr) {
-            char buf[16];
-            if (total_sec >= 3600) {
-              uint16_t remaining_h = remaining_sec / 3600;
-              uint16_t remaining_min = (remaining_sec % 3600) / 60;
-              uint16_t remaining_s = remaining_sec % 60;
-              snprintf(buf, sizeof(buf), "%u:%02u:%02u", remaining_h, remaining_min, remaining_s);
-            } else {
-              uint16_t remaining_min = remaining_sec / 60;
-              uint16_t remaining_s = remaining_sec % 60;
-              snprintf(buf, sizeof(buf), "%u:%02u", remaining_min, remaining_s);
-            }
-            lv_label_set_text(label_timer, buf);
-          }
-
-          // Update total duration label (1 HR., 30 MINS., 45 SEC. etc)
-          auto label_duration = (lv_obj_t *)id(ui_timer_duration);
-          if (label_duration != nullptr) {
-            char buf_duration[16];
-            if (total_sec >= 3600) {
-              uint16_t hours = total_sec / 3600;
-              snprintf(buf_duration, sizeof(buf_duration), "%u %s", hours, hours == 1 ? "HR." : "HRS.");
-            } else if (total_sec >= 60) {
-              uint16_t minutes = total_sec / 60;
-              snprintf(buf_duration, sizeof(buf_duration), "%u %s", minutes, minutes == 1 ? "MIN." : "MINS.");
-            } else {
-              snprintf(buf_duration, sizeof(buf_duration), "%u SEC.", total_sec);
-            }
-            lv_label_set_text(label_duration, buf_duration);
-          }
-
-          // Update timer name
-          auto label_name = (lv_obj_t *)id(ui_timer_name);
-          if (label_name != nullptr) {
-            const std::string& timer_name = id(timer_first_active).name;
-            lv_label_set_text(label_name, timer_name.empty() ? "Timer" : timer_name.c_str());
-          }
-
-          // Update progress arc showing remaining time (shrinks as time passes)
-          auto arc = (lv_obj_t *)id(ui_timer_arc);
-          if (arc != nullptr) {
-            uint16_t end_angle = (remaining_sec * 360) / (total_sec > 0 ? total_sec : 1);
-            lv_arc_set_end_angle(arc, end_angle);
-          }
+  # REMOVED: timer_render_display moved to display manager
+  # (Display rendering belongs in managers/display.yaml, not timer module)
 
   - id: timer_update_display
     then:
@@ -496,59 +415,8 @@ script:
 
           ESP_LOGI("timer", "Display: Timer Expired");
 
-  - id: timer_queue_alarm_if_active
-    then:
-      # Only queue sound if alarm switch is still on
-      - if:
-          condition:
-            switch.is_on: timer_ringing
-          then:
-            - script.execute:
-                id: audio_queue_sound
-                sound_key: "timer_alarm"
-          else:
-            - logger.log: "Timer alarm: Skipped queue (alarm stopped)"
-
-  - id: timer_play_looping_alarm
-    mode: restart
-    then:
-      - logger.log: "Timer alarm: Starting looping playback"
-      - switch.turn_on: timer_ringing
-      # On shared I2S hardware: stop wake word mic to avoid bus contention with alarm playback
-      # NOTE: We do NOT re-arm wake word after alarm completes - that is Voice State Manager's
-      # responsibility via canonical interaction state. Unconditionally re-arming here would
-      # conflict with VSM's authority over wake-word lifecycle (e.g., device may be intentionally
-      # muted or in non-listening mode). Let VSM restore listening based on canonical state.
-      - if:
-          condition:
-            lambda: 'return std::string("${i2s_shared_bus}") == "true";'
-          then:
-            - script.execute: microphone_stop_listening
-            - script.wait: microphone_stop_listening
-      - while:
-          condition:
-            switch.is_on: timer_ringing
-          then:
-            # Guard: only queue if switch still on (prevents accumulation after stop)
-            - script.execute: timer_queue_alarm_if_active
-            # Wait synchronously for sound to finish (prevents queue buildup)
-            - script.wait: audio_queue_sound
-            - wait_until:
-                condition:
-                  not:
-                    media_player.is_announcing:
-            # Brief delay (microphone listens for wake word in this gap if hw supports it)
-            - delay: 50ms
-      - logger.log: "Timer alarm: Looping playback stopped"
-
-  - id: timer_stop_looping_alarm
-    mode: restart
-    then:
-      - logger.log: "Timer alarm: Stopping alarm"
-      - switch.turn_off: timer_ringing
-      - media_player.stop:
-          id: va_media_player
-      - script.execute: audio_stop_sound
+  # REMOVED: Audio alert playback moved to managers/audio.yaml
+  # (Alarm handling belongs in audio manager, not timer module)
 
 text_sensor:
   - platform: template
@@ -562,8 +430,7 @@ button:
     id: timer_button_cancel
     name: "Stop Timer"
     on_press:
-      - logger.log: "Stop alarm button pressed"
-      - script.execute: timer_stop_looping_alarm
+      - logger.log: "Stop timer button pressed"
       - voice_assistant.stop:
 
 
