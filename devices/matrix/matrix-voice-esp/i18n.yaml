@@ -1,0 +1,23 @@
+################################################################################
+## Matrix Voice Internationalization (i18n) Module
+##
+## Device-specific display labels and entity names for the Matrix Voice.
+## Override global labels defined in root i18n.yaml if needed.
+## All labels use substitutions for easy translation and customization.
+################################################################################
+
+substitutions:
+  led_ring_state_handler: !include led_ring_state_handler.yaml
+
+  # LED Ring
+  label_led_ring: "LED Ring"
+
+  # Audio Controls
+  label_microphone_mute: "Microphone Mute"
+  label_speaker: "Speaker"
+
+  # Buttons
+  label_mute_button: "Mute Button"
+
+  # Device Display Name
+  label_device_name: "Matrix Voice ESP"

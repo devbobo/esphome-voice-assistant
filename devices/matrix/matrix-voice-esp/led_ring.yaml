@@ -1,0 +1,26 @@
+################################################################################
+## Matrix Voice LED Ring Implementation
+##
+## Device-specific LED ring hardware control and animation.
+## Listens to LED events from root led_ring_state_manager.yaml and controls
+## the actual addressable LED hardware (APA102 RGB LEDs).
+##
+## Separation of Concerns:
+##   - led_ring_state_manager.yaml (root): Decides WHEN LED should change (logic layer)
+##   - led_ring_state_handler.yaml (device): Controls HOW LED changes (hardware layer)
+##
+## This module:
+##   - Loads Matrix LED hardware control
+##   - Exposes handler logic via substitutions in i18n.yaml
+##   - Lets the root led_event template invoke Matrix-specific actions
+##
+## LED Ring Hardware:
+##   - 18 RGBW addressable LEDs (APA102 protocol)
+##   - SPI interface (GPIO14=CLK, GPIO13=MOSI, GPIO15=CS)
+##   - 10MHz clock speed
+##   - Supports pulse, strobe, and custom color effects
+################################################################################
+
+## LED Ring Master Control
+packages:
+  led_ring_control: !include ../../includes/led_ring/common.yaml

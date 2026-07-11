@@ -1,0 +1,66 @@
+################################################################################
+## Matrix Voice I/O Entities Module
+##
+## Logical abstractions for LED ring, microphone, and speaker via FPGA.
+## Uses gnumpi's matrixio platform to communicate with FPGA-controlled hardware.
+## The FPGA handles all low-level I/O multiplexing and audio processing.
+##
+## Entity Composition:
+##   - light: LED ring (18 RGBW LEDs) via matrixio platform
+##   - microphone: 8-channel microphone array (mixed to mono) via matrixio
+##   - speaker: Audio output to PAM8019 amplifier via matrixio
+################################################################################
+
+## LED Ring Control via FPGA
+##
+## 18 RGBW addressable LEDs arranged in a circle around the Matrix Voice.
+## Controlled through the FPGA via matrixio platform.
+## The LED ring provides visual feedback for device state:
+##   - Blue: Listening (wake word detected, ready for voice command)
+##   - Red: Muted (microphone disabled)
+##   - Green: Processing (voice command recognized, sending to assistant)
+##   - Idle: Off or low brightness
+##
+## Platform: matrixio (FPGA-controlled LED array)
+## Color Range: 0-100% for red, green, blue, white channels
+##
+light:
+  - platform: matrixio
+    name: "${label_led_ring}"
+    id: led_ring
+    matrixio_id: matrixio_dev
+
+## Microphone Input via FPGA
+##
+## Captures audio from the 8 MEMS microphones (MP34DB02) multiplexed by FPGA.
+## The FPGA internally mixes the 8 channels to a single mono stream.
+##
+## Configuration:
+##   - Platform: matrixio (FPGA-controlled 8-channel array)
+##   - Sample Rate: 16kHz (standard for voice recognition)
+##   - Bit Depth: 16-bit PCM
+##   - Channels: Mono (mixed output from 8 sensors by FPGA)
+##
+microphone:
+  - platform: matrixio
+    id: va_microphone
+    matrixio_id: matrixio_dev
+
+## Speaker Output via FPGA
+##
+## Plays audio through the PAM8019 Class-D amplifier to 3.5mm jack or speakers.
+## The FPGA routes audio directly to the amplifier.
+##
+## Configuration:
+##   - Platform: matrixio (FPGA-controlled audio output)
+##   - Sample Rate: 16kHz (voice assistant standard)
+##   - Bit Depth: 16-bit PCM
+##   - Output Mode: headphone (default, can switch to speakers)
+##   - Volume: 80% (adjustable 0-100%, set in device-specific config)
+##
+speaker:
+  - platform: matrixio
+    id: va_speaker
+    matrixio_id: matrixio_dev
+    audio_out: headphone
+    volume: 80

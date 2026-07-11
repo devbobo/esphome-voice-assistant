@@ -1,0 +1,3 @@
+- logger.log:
+    format: "LED Ring: Applying state: %s"
+    args: ["id(led_ring_state).c_str()"]
