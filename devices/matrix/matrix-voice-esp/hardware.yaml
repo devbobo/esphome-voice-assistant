@@ -44,6 +44,3 @@ spi:
 matrixio:
   id: matrixio_dev
   cs_pin: GPIO23
-
-# Minimal audio component to satisfy ESPHome audio validation
-audio:
