@@ -7,8 +7,6 @@
 ################################################################################
 
 substitutions:
-  led_ring_state_handler: !include led_ring_state_handler.yaml
-
   # LED Ring
   label_led_ring: "LED Ring"
 
