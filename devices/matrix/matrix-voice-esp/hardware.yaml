@@ -44,3 +44,7 @@ spi:
 matrixio:
   id: matrixio_dev
   cs_pin: GPIO23
+
+# Audio component configuration for microphone validation
+audio:
+  buffer_size: 2048

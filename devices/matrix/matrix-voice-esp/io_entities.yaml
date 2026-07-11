@@ -45,7 +45,7 @@ microphone:
   - platform: matrixio
     id: va_microphone
     conf_matrixio_id: matrixio_dev
-    channels: 1
+    num_channels: 1
 
 ## Speaker Output via FPGA
 ##
