@@ -72,6 +72,8 @@ script:
     mode: restart
     then:
       - lambda: |-
+          if (!id(display_manager_enabled)) return;
+
           if (id(dm_boot_ms) == 0) {
             id(dm_boot_ms) = millis();
           }
@@ -115,6 +117,7 @@ script:
       interaction_state: string
     then:
       - lambda: |-
+          if (!id(display_manager_enabled)) return;
           id(dm_last_system_event) = "interaction:" + interaction_state;
           id(dm_assistant_state) = interaction_state;
       - script.execute: display_manager_recompute_view
@@ -125,8 +128,10 @@ script:
     parameters:
       touchscreen_event: string
     then:
-      - lambda: id(dm_last_touch_event) = touchscreen_event;
-      - lambda: id(dm_show_startup) = false;
+      - lambda: |-
+          if (!id(display_manager_enabled)) return;
+          id(dm_last_touch_event) = touchscreen_event;
+          id(dm_show_startup) = false;
 
       - if:
           condition:
@@ -246,6 +251,8 @@ script:
     parameters:
       timer_event: string
     then:
+      - lambda: |-
+          if (!id(display_manager_enabled)) return;
       # Timer started: fetch newest timer and show countdown page
       - if:
           condition:
@@ -319,7 +326,9 @@ script:
   - id: display_manager_render
     mode: restart
     then:
-      - lambda: id(dm_render_requested) = true;
+      - lambda: |-
+          if (!id(display_manager_enabled)) return;
+          id(dm_render_requested) = true;
       - logger.log:
           format: "Display Manager: view=%s state=%s page=%d detail=%s system=%s touch=%s"
           args:
@@ -348,14 +357,20 @@ script:
 interval:
   - interval: 250ms
     then:
+      - lambda: |-
+          if (!id(display_manager_enabled)) return;
+
+          if (id(dm_boot_ms) == 0) {
+            id(dm_boot_ms) = millis();
+          }
+          if (id(dm_show_startup) && (millis() - id(dm_boot_ms) >= 4000)) {
+            id(dm_show_startup) = false;
+            // Trigger recompute and render
+          }
       - if:
           condition:
-            lambda: >-
-              if (id(dm_boot_ms) == 0) {
-                id(dm_boot_ms) = millis();
-              }
-              return id(dm_show_startup) && (millis() - id(dm_boot_ms) >= 4000);
+            lambda: |-
+              return id(display_manager_enabled) && id(dm_show_startup) && (millis() - id(dm_boot_ms) >= 4000);
           then:
-            - lambda: id(dm_show_startup) = false;
             - script.execute: display_manager_recompute_view
             - script.execute: display_manager_render
