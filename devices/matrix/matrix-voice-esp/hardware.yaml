@@ -31,7 +31,7 @@ external_components:
 
 esp32:
   board: esp32dev
-  variant: esp32s3
+  variant: esp32
   framework:
     type: esp-idf
     version: recommended

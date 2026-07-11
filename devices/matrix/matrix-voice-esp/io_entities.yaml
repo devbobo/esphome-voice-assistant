@@ -28,7 +28,7 @@ light:
   - platform: matrixio
     name: "${label_led_ring}"
     id: led_ring
-    matrixio_id: matrixio_dev
+    conf_matrixio_id: matrixio_dev
 
 ## Microphone Input via FPGA
 ##
@@ -44,7 +44,7 @@ light:
 microphone:
   - platform: matrixio
     id: va_microphone
-    matrixio_id: matrixio_dev
+    conf_matrixio_id: matrixio_dev
 
 ## Speaker Output via FPGA
 ##
@@ -61,6 +61,6 @@ microphone:
 speaker:
   - platform: matrixio
     id: va_speaker
-    matrixio_id: matrixio_dev
+    conf_matrixio_id: matrixio_dev
     audio_out: headphone
     volume: 80
