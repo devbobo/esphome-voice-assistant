@@ -262,3 +262,33 @@ script:
     then:
       - logger.log: "Audio: Stop current sound"
       - media_player.stop: va_media_player
+
+  ############################################################################
+  ## Timer Alarm Scripts - Play/stop looping alarm for expired timers
+  ############################################################################
+
+  - id: timer_play_looping_alarm
+    mode: restart
+    then:
+      - logger.log: "Audio: Timer alarm - Starting looping playback"
+      - while:
+          condition:
+            lambda: 'return true;'
+          then:
+            - script.execute:
+                id: audio_queue_sound
+                sound_key: "timer_alarm"
+            - script.wait: audio_queue_sound
+            - wait_until:
+                condition:
+                  not:
+                    media_player.is_announcing:
+                timeout: 2s
+            - delay: 500ms
+
+  - id: timer_stop_looping_alarm
+    mode: restart
+    then:
+      - logger.log: "Audio: Timer alarm - Stopping alarm"
+      - script.stop: timer_play_looping_alarm
+      - media_player.stop: va_media_player
