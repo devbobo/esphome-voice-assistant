@@ -171,8 +171,8 @@ script:
           event_type: "${evt_wake_word_stop_requested}"
       - wait_until:
           condition:
-            - not:
-                microphone.is_capturing
+            not:
+              microphone.is_capturing: {}
           timeout: 3s
       - delay: 200ms
 
