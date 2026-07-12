@@ -9,9 +9,6 @@ substitutions:
   # Override in device packages if hardware has separate I2S buses
   i2s_shared_bus: "true"
 
-  enable_display_manager: "false"
-  enable_led_ring_manager: "false"
-  enable_touchscreen_manager: "false"
 
   # Default no-op LED state handler. Device packages can override this
   # (e.g. EchoEar uses devices/espressif/echoear/handlers/led_ring.yaml).

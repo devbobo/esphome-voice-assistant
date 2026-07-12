@@ -89,6 +89,10 @@ substitutions:
   evt_wake_word_stop_requested:   "wake_word_stop_requested"
   evt_wake_word_location_changed: "wake_word_location_changed"
 
+  enable_display_manager: "false"
+  enable_led_ring_manager: "false"
+  enable_touchscreen_manager: "false"
+
 globals:
   - id: api_client_connected
     type: bool
