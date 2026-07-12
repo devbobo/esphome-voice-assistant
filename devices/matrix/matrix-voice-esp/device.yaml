@@ -23,7 +23,7 @@
 ## External Custom Component
 ## Provides matrixio platform for LED, microphone, and speaker control via FPGA
 external_components:
-  - source: github://gnumpi/esphome_matrixio@main
+  - source: github://devbobo/esphome_matrixio@main
     components: [matrixio]
 
 ## Feature Flags
