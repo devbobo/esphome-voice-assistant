@@ -96,6 +96,11 @@ globals:
     initial_value: "false"
     # Tracks whether at least one Home Assistant API client is connected
 
+  # - id: display_manager_enabled
+  #   type: bool
+  #   restore_value: no
+  #   initial_value: "${enable_display_manager}"
+
 api:
   on_client_connected:
     - logger.log: "Connected to Home Assistant"
@@ -265,10 +270,12 @@ event:
       #           id: display_manager_handle_timer_event
       #           timer_event: !lambda return event_type;
 
+display_manager_package: !include managers/display.yaml
+
 packages:
   interaction_manager: !include managers/interaction.yaml
   audio_manager: !include managers/audio.yaml
   voice_manager: !include managers/voice.yaml
   led_ring_manager: !include managers/led_ring.yaml
   # touchscreen_manager: !include managers/touchscreen.yaml
-  # display_manager: !include managers/display.yaml
+  display_manager: ${ display_manager_package if enable_display_manager == "true" else {} }
