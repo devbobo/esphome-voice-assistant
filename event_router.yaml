@@ -271,11 +271,13 @@ event:
       #           timer_event: !lambda return event_type;
 
 display_manager_package: !include managers/display.yaml
+led_ring_manager_package: !include managers/led_ring.yaml
+touchscreen_manager_package: !include managers/touchscreen.yaml
 
 packages:
   interaction_manager: !include managers/interaction.yaml
   audio_manager: !include managers/audio.yaml
   voice_manager: !include managers/voice.yaml
-  led_ring_manager: !include managers/led_ring.yaml
-  # touchscreen_manager: !include managers/touchscreen.yaml
+  led_ring_manager: ${ led_ring_manager_package if enable_led_ring_manager == "true" else {} }
+  touchscreen_manager: ${ touchscreen_manager_package if enable_touchscreen_manager == "true" else {} }
   display_manager: ${ display_manager_package if enable_display_manager == "true" else {} }
