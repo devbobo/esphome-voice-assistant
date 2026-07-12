@@ -187,6 +187,6 @@ event:
       - script.execute:
           id: led_ring_handle_interaction_state
           interaction_state: !lambda return event_type;
-      - script.execute:
-          id: display_manager_handle_interaction_state
-          interaction_state: !lambda return event_type;
+      # - script.execute:
+      #     id: display_manager_handle_interaction_state
+      #     interaction_state: !lambda return event_type;

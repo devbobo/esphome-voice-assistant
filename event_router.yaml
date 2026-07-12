@@ -250,25 +250,25 @@ event:
                 timer_event: !lambda return event_type;
 
       # Display Manager - handle all timer display events
-      - if:
-          condition:
-            lambda: >-
-              return std::set<std::string>{
-                "${evt_va_timer_started}",
-                "${evt_va_timer_updated}",
-                "${evt_va_timer_tick}",
-                "${evt_va_timer_finished}",
-                "${evt_va_timer_cancelled}",
-              }.count(event_type) > 0;
-          then:
-            - script.execute:
-                id: display_manager_handle_timer_event
-                timer_event: !lambda return event_type;
+      # - if:
+      #     condition:
+      #       lambda: >-
+      #         return std::set<std::string>{
+      #           "${evt_va_timer_started}",
+      #           "${evt_va_timer_updated}",
+      #           "${evt_va_timer_tick}",
+      #           "${evt_va_timer_finished}",
+      #           "${evt_va_timer_cancelled}",
+      #         }.count(event_type) > 0;
+      #     then:
+      #       - script.execute:
+      #           id: display_manager_handle_timer_event
+      #           timer_event: !lambda return event_type;
 
 packages:
   interaction_manager: !include managers/interaction.yaml
   audio_manager: !include managers/audio.yaml
   voice_manager: !include managers/voice.yaml
   led_ring_manager: !include managers/led_ring.yaml
-  touchscreen_manager: !include managers/touchscreen.yaml
-  display_manager: !include managers/display.yaml
+  # touchscreen_manager: !include managers/touchscreen.yaml
+  # display_manager: !include managers/display.yaml
